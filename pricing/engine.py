@@ -27,6 +27,13 @@ MSG_MONEY_NEGATIVE = "Enter an amount of £0 or more"
 # --- Money helpers -------------------------------------------------------------
 
 
+_GUTTER_SHORT = {
+    "clearance": "Gutter Clearance",
+    "outer": "Outer Gutter & Fascia",
+    "package3": "Package 3 (clearance + outer clean)",
+}
+
+
 def _dec(value) -> Decimal:
     """Exact Decimal from a JSON number (floats go through str to avoid binary noise)."""
     if isinstance(value, Decimal):
@@ -500,11 +507,10 @@ def _quote_gutters(req: dict, prices: dict, errs: _Errors, today: date) -> dict:
     override = _parse_override(req.get("override"), errs)
     errs.raise_if_any()
 
-    service_name = g["services"][service]
-    label = prop.name + (" with conservatory/extension" if cons else "") + f": {service_name}"
+    label = _GUTTER_SHORT[service] + (" + conservatory/extension" if cons else "")
     lines = []
     if manual:
-        lines.append(_line("service", label + " (staff price)", to_pence(manual_price)))
+        lines.append(_line("service", label + ": staff price", to_pence(manual_price)))
     else:
         base = to_pence(g["bedrooms"][str(prop.bedrooms)][service]["with_cons" if cons else "no_cons"])
         lines.append(_line("service", label, base))
@@ -532,7 +538,7 @@ def _quote_gutters(req: dict, prices: dict, errs: _Errors, today: date) -> dict:
 
     options = [
         f"Property: {prop.name if prop.kind == 'standard' else 'Other: ' + prop.description}",
-        f"Service: {service_name}",
+        f"Service: {g['services'][service]}",
         f"Conservatory/extension: {'Yes' if cons else 'No'}",
     ]
     if not manual:

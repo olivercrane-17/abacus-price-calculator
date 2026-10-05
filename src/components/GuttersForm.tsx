@@ -160,7 +160,7 @@ export function GuttersForm({
               value={state.manualPrice}
               onChange={(v) => set({ manualPrice: v })}
               error={err("manual_price")}
-              hint="There's no set price, so enter the full price"
+              hint="Price this from the customer's photos and enter the full amount"
             />
             {propertyWarning && <FieldMessage tone="warning">{propertyWarning}</FieldMessage>}
           </div>

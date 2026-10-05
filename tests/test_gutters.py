@@ -36,7 +36,7 @@ def test_three_bed_clearance():
     assert r["basis"] == "one_off"
     assert r["basis_label"] == "one-off job"
     assert r["lines"] == [
-        {"key": "service", "label": "3 bed house: Gutter Clearance", "amount": 12000}
+        {"key": "service", "label": "Gutter Clearance", "amount": 12000}
     ]
     assert r["total"] == 12000
     assert r["comparison"] is None
@@ -63,7 +63,7 @@ def test_sheet_prices(beds, service, cons, pence):
 def test_conservatory_label():
     r = quote(gutters(service="outer", conservatory=True))
     assert r["lines"][0]["label"] == (
-        "3 bed house with conservatory/extension: Outer Gutter & Fascia Cleaning"
+        "Outer Gutter & Fascia + conservatory/extension"
     )
 
 
@@ -85,7 +85,7 @@ def test_five_bed_heavily_soiled_with_conservatory():
     assert r["lines"] == [
         {
             "key": "service",
-            "label": "5 bed house with conservatory/extension: Gutter Clearance",
+            "label": "Gutter Clearance + conservatory/extension",
             "amount": 17500,
         },
         {"key": "heavily_soiled", "label": "Heavily soiled first clean (×2.5)", "amount": 26250},
@@ -111,7 +111,7 @@ def test_one_bed_with_manual_price():
     assert r["lines"] == [
         {
             "key": "service",
-            "label": "1 bed house: Package 3 (Gutter Clearance + Outer Gutter & Fascia Cleaning) (staff price)",
+            "label": "Package 3 (clearance + outer clean): staff price",
             "amount": 9550,
         }
     ]
@@ -134,7 +134,7 @@ def test_other_property_gutters():
     )
     assert r["lines"][0] == {
         "key": "service",
-        "label": "Other property (Bungalow with annexe): Outer Gutter & Fascia Cleaning (staff price)",
+        "label": "Outer Gutter & Fascia: staff price",
         "amount": 15000,
     }
     assert warning_keys(r) == ["other_property"]
