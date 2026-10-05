@@ -1,0 +1,163 @@
+# Abacus price calculator: design spec
+
+Date: 2026-10-05. Source price list: `Window Cleaning Price List Feb 25.xlsx`. All prices live in `prices.json`.
+
+## Purpose
+
+An internal web tool for Abacus Window Cleaning Ltd staff taking enquiries. Staff quickly and accurately quote
+**window cleaning** and **gutter & fascia** work from the Feb 25 price list. It is desktop-first but works on a phone.
+
+- Hosted on the Vercel free tier with **no login** (the prices are public).
+- **Nothing is stored and there are no customer details.** The result is shown on screen with a "Copy" button that
+  copies a compact **internal** breakdown for staff records.
+- Prices **include VAT**. The UI never adds VAT.
+- Window quotes and gutter quotes are **separate** (two tabs) and never combined.
+
+## Architecture
+
+- `prices.json` at the repo root is the single source of truth for every price and warning string.
+- `pricing/`: a pure-Python pricing engine with no web code. It uses `Decimal` and rounds half-up to pence.
+  All business rules live here and are covered by pytest in `tests/`.
+- `api/index.py`: a FastAPI app (Vercel Python serverless function) that wraps the engine.
+- Front end: a Vite + React + TypeScript static site at the repo root (`index.html`, `src/`), built to `dist/`.
+  It calls the API live as staff change options (debounced, stale requests aborted). It holds **no pricing logic**
+  and only formats what the API returns.
+- `vercel.json` rewrites `/api/*` to the Python function and includes `prices.json` and `pricing/**` in it.
+- Local dev: run `uvicorn api.index:app --port 8000`, and Vite proxies `/api` to it.
+
+## Pricing rules: windows
+
+Inputs:
+- Property: a standard 1–5 bed house, OR "other" (staff enter a description and their own window price).
+- Frequency: `4`, `6`, `8`, `12` (weekly) or `one_off`.
+- Conservatory/extension: `none`, `standard`, `large`.
+  - Regular: standard adds `conservatory_addon` for the bedroom count.
+  - One-off: standard uses `one_off_with_conservatory` instead of `one_off`.
+  - Large: staff enter the conservatory charge, which **replaces** the standard charge (regular: replaces the add-on;
+    one-off: base = `one_off` + the staff amount). It shows the `large_conservatory` warning.
+  - Not available for an "other" property (the staff price covers it).
+- Internal windows (toggle): internal = `internal_multiplier` (2) × the external window price (house +
+  conservatory, or the staff price for "other"). It is added to every visit on regular cleans, or once for a one-off.
+- Conservatory roof: outside panels × £8, raised to a **£25 minimum** if outside panels > 0. Inside panels × £16 with
+  no minimum.
+- Velux: outside count × £1.50, inside count × £3.
+- Roof lanterns: counts per size (small/medium/large) for outside and inside, at £10/£15/£20 outside and
+  £20/£30/£40 inside. "Larger structure": staff enter a price (from customer photos). It shows the `larger_lantern`
+  warning.
+- All roof extras are charged on **every visit** for regular cleans, or once for a one-off.
+- Comparison: for a standard property on a regular frequency, the response includes the per-visit total for all four
+  frequencies with the same options (no override applied).
+
+## Pricing rules: gutters
+
+Inputs:
+- Property: a standard 1–5 bed house, or "other" (staff description).
+- Service (pick one): `clearance`, `outer`, `package3` (Package 3 = both together at the bundle price).
+- Conservatory/extension: yes/no (2 bed is the same price either way).
+- Heavily soiled (tick box): the sheet price × 2.5 for any of the three services. **Not available when the price is
+  staff-entered** (1 bed or "other"), where staff just type the final price.
+- 1 bed or "other": no set price, so `manual_price` is required. Shows the `gutters_1_bed` or `other_property` warning.
+- Warnings: 1 and 2 bed show `gutters_small_property`, and 5 bed shows `gutters_5_bed`.
+- Ask-about extras (gutters only): Hedgehog Gutter Guards, Power Source, Garden Waste. Each has a "selected" tick and
+  an optional price. A selected item with a price adds a line. A selected item with no price is listed as
+  "price TBC" (amount `null`) and is not added to the total.
+
+## Both quote types
+
+- Total override: staff may replace the final total with any amount and **must** give a reason. The response keeps
+  the calculated subtotal and shows the override.
+- Copy summary: plain text, compact, line by line, for internal records. It includes the date, quote type, the
+  options chosen, each line, any override and reason, warnings, and "Prices include VAT".
+
+## API contract
+
+All money in **requests** is in pounds (JSON number). All money in **responses** is in integer **pence**.
+
+### `GET /api/config`
+Returns the content of `prices.json` (without `_readme`). The UI uses it for labels, available sizes and lantern
+sizes, ask-about names and the price-list date.
+
+### `GET /api/health` → `{"ok": true}`
+
+### `POST /api/quote`
+
+Windows request:
+```json
+{
+  "quote_type": "windows",
+  "property": {"kind": "standard", "bedrooms": 3},
+  "frequency": "4",
+  "conservatory": "standard",
+  "large_conservatory_price": null,
+  "internal": false,
+  "conservatory_roof": {"external_panels": 0, "internal_panels": 0},
+  "velux": {"external": 0, "internal": 0},
+  "lanterns": {
+    "small": {"external": 0, "internal": 0},
+    "medium": {"external": 0, "internal": 0},
+    "large": {"external": 0, "internal": 0},
+    "larger_price": null
+  },
+  "override": null
+}
+```
+- For an "other" property: `"property": {"kind": "other", "description": "6 bed detached", "price": 55}`.
+- `override`: `{"total": 40, "reason": "Regular customer rate"}`.
+- Optional fields may be omitted and default to zero, false or null.
+
+Gutters request:
+```json
+{
+  "quote_type": "gutters",
+  "property": {"kind": "standard", "bedrooms": 3},
+  "service": "package3",
+  "conservatory": false,
+  "heavily_soiled": false,
+  "manual_price": null,
+  "extras": [{"name": "Hedgehog Gutter Guards", "selected": true, "price": null}],
+  "override": null
+}
+```
+
+Response (both types):
+```json
+{
+  "quote_type": "windows",
+  "basis": "per_visit",
+  "basis_label": "per visit, every 4 weeks",
+  "lines": [
+    {"key": "house", "label": "3 bed house: windows outside", "amount": 2700},
+    {"key": "conservatory", "label": "Conservatory/extension", "amount": 900}
+  ],
+  "subtotal": 3600,
+  "override": null,
+  "total": 3600,
+  "warnings": [{"key": "large_conservatory", "message": "..."}],
+  "comparison": [
+    {"frequency": "4", "label": "Every 4 weeks", "total": 3600, "selected": true},
+    {"frequency": "6", "label": "Every 6 weeks", "total": 3700, "selected": false}
+  ],
+  "summary_text": "ABACUS WINDOW CLEANING: QUOTE ..."
+}
+```
+- `basis`: `per_visit` (regular windows) or `one_off` (one-off windows and all gutter work).
+- `comparison` is `null` unless it's a windows quote, a standard property and a regular frequency.
+- `override` in the response: `{"total": 4000, "reason": "..."}` (pence) or `null`. `total` = the override total if
+  set, otherwise `subtotal`.
+- A line's `amount` may be `null` only for ask-about extras with no price.
+- Validation errors → HTTP 422 `{"errors": [{"field": "large_conservatory_price", "message": "Enter the conservatory charge"}]}`.
+  The messages are written for staff to read and are shown inline in the UI next to the field.
+
+## UX / visual direction
+
+- **Bold & branded**: a strong royal-blue (#0A1683) header and price panel, slate (#4A5263) secondary text, high
+  contrast and punchy type. The logo is recreated in code: "Abacus" in a heavy geometric sans in royal blue, and
+  "Window Cleaning Ltd" in a slate serif beneath (light-on-dark variant inside blue areas).
+- Desktop layout: the options form on the left, and a sticky live price panel on the right (big animated total, line
+  breakdown, warnings, frequency comparison, override, Copy button). Phone: the panel becomes a sticky bottom bar
+  that expands.
+- Tabs: Windows | Gutters & fascias. A Reset button clears the current tab.
+- Fast to operate by keyboard: segmented controls, steppers for counts, and sensible defaults (3 bed, 4 weekly,
+  no conservatory).
+- Warnings are prominent amber banners in the price panel, and next to the relevant control.
+- The footer shows the price-list date and the office numbers.

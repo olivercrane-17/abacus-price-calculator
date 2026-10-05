@@ -1,0 +1,55 @@
+{
+  "_readme": "All prices for the Abacus price calculator. Amounts are in pounds and INCLUDE VAT. Edit numbers here, commit and push; Vercel redeploys automatically. See UPDATING-PRICES.md.",
+  "price_list_date": "February 2025",
+
+  "windows": {
+    "frequencies": ["4", "6", "8", "12"],
+    "bedrooms": {
+      "1": { "regular": { "4": 15, "6": 15, "8": 15, "12": 15 }, "conservatory_addon": 9,  "one_off": 30, "one_off_with_conservatory": 48 },
+      "2": { "regular": { "4": 24, "6": 25, "8": 26, "12": 28 }, "conservatory_addon": 9,  "one_off": 56, "one_off_with_conservatory": 74 },
+      "3": { "regular": { "4": 27, "6": 28, "8": 29, "12": 31 }, "conservatory_addon": 9,  "one_off": 62, "one_off_with_conservatory": 80 },
+      "4": { "regular": { "4": 30, "6": 31, "8": 32, "12": 34 }, "conservatory_addon": 11, "one_off": 68, "one_off_with_conservatory": 90 },
+      "5": { "regular": { "4": 37, "6": 38, "8": 39, "12": 45 }, "conservatory_addon": 12, "one_off": 90, "one_off_with_conservatory": 114 }
+    },
+    "internal_multiplier": 2,
+    "conservatory_roof": { "external_per_panel": 8, "external_minimum": 25, "internal_per_panel": 16 },
+    "velux": { "external_each": 1.5, "internal_each": 3 },
+    "lanterns": {
+      "small":  { "external": 10, "internal": 20 },
+      "medium": { "external": 15, "internal": 30 },
+      "large":  { "external": 20, "internal": 40 }
+    }
+  },
+
+  "gutters": {
+    "services": {
+      "clearance": "Gutter Clearance",
+      "outer": "Outer Gutter & Fascia Cleaning",
+      "package3": "Package 3 (Gutter Clearance + Outer Gutter & Fascia Cleaning)"
+    },
+    "bedrooms": {
+      "1": null,
+      "2": { "clearance": { "no_cons": 100, "with_cons": 100 }, "outer": { "no_cons": 100, "with_cons": 100 }, "package3": { "no_cons": 180, "with_cons": 180 } },
+      "3": { "clearance": { "no_cons": 120, "with_cons": 135 }, "outer": { "no_cons": 120, "with_cons": 135 }, "package3": { "no_cons": 200, "with_cons": 220 } },
+      "4": { "clearance": { "no_cons": 137, "with_cons": 152 }, "outer": { "no_cons": 137, "with_cons": 152 }, "package3": { "no_cons": 232, "with_cons": 252 } },
+      "5": { "clearance": { "no_cons": 145, "with_cons": 175 }, "outer": { "no_cons": 145, "with_cons": 175 }, "package3": { "no_cons": 250, "with_cons": 285 } }
+    },
+    "heavily_soiled_multiplier": 2.5,
+    "ask_about": ["Hedgehog Gutter Guards", "Power Source", "Garden Waste"]
+  },
+
+  "warnings": {
+    "large_conservatory": "Larger than average conservatory/extension: get photos before confirming the price.",
+    "gutters_small_property": "1 and 2 bed properties can vary and may be quite small: ask for photos.",
+    "gutters_1_bed": "No set price for 1 bed gutter work: request pictures and enter a price.",
+    "gutters_5_bed": "ALWAYS ask for photos of 5 bed properties before quoting.",
+    "larger_lantern": "Larger roof lantern / structure: request pictures from the customer and enter a price.",
+    "other_property": "Manual quote for a property outside the price list."
+  },
+
+  "contact": {
+    "phone": "01252 834238",
+    "mobile": "07920 422778",
+    "sales_mobile": "07727 314385"
+  }
+}
