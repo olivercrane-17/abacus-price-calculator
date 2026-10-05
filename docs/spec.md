@@ -161,3 +161,38 @@ Response (both types):
   no conservatory).
 - Warnings are prominent amber banners in the price panel, and next to the relevant control.
 - The footer shows the price-list date and the office numbers.
+
+## Basket (added 2026-10-05)
+
+Staff configure a quote in either tab, then click **Add to basket**. The basket holds any number of window and
+gutter items.
+
+- **Overrides** stay per item. The basket only adds up item totals.
+- **Totals are grouped**, because per-visit prices can't be summed across frequencies or with one-off work: one
+  group per regular frequency (per visit), plus one **One-off total** (one-off windows and all gutter work).
+- **Basket UI:** each item shows its `title` and total, with Edit (loads it back into its tab; the button becomes
+  "Update item") and Remove. There's also Clear basket (with confirmation) and **Copy basket for records**, which
+  copies the combined `summary_text`.
+- **Saving:** the basket is saved in the browser's localStorage as the list of quote *request* bodies (no customer
+  data). Items are re-priced through the API on every load, so price changes apply to saved baskets.
+
+### API additions
+- Every quote response now also has `title` (a short item name, e.g. "3 bed windows · every 4 weeks ·
+  conservatory") and `frequency` (`"4"|"6"|"8"|"12"|"one_off"` for windows, `null` for gutters).
+- `POST /api/basket` with `{"items": [<quote request>, ...]}` (max 50) returns:
+```json
+{
+  "count": 2,
+  "items": [
+    {"index": 0, "ok": true, "quote": {"...": "full quote response"}, "errors": []},
+    {"index": 1, "ok": false, "quote": null, "errors": [{"field": "...", "message": "..."}]}
+  ],
+  "groups": [
+    {"basis": "per_visit", "frequency": "4", "label": "Every 4 weeks", "suffix": "per visit", "total": 3600, "items": 1},
+    {"basis": "one_off", "frequency": null, "label": "One-off total", "suffix": "one-off", "total": 20000, "items": 1}
+  ],
+  "summary_text": "ABACUS WINDOW CLEANING: BASKET ..."
+}
+```
+  An invalid item is returned with its errors and left out of the totals. A malformed body returns 422
+  `{"errors": [...]}`.

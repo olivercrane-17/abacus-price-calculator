@@ -48,7 +48,7 @@ def test_quote_windows():
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {
-        "quote_type", "basis", "basis_label", "lines", "subtotal", "override",
+        "quote_type", "title", "frequency", "basis", "basis_label", "lines", "subtotal", "override",
         "total", "warnings", "comparison", "summary_text",
     }
     assert body["total"] == 3600

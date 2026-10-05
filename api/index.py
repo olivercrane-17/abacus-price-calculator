@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
-from pricing import ValidationError, public_config, quote  # noqa: E402
+from pricing import ValidationError, basket, public_config, quote  # noqa: E402
 
 app = FastAPI(title="Abacus price calculator API", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -33,14 +33,23 @@ def config():
     return public_config()
 
 
-@app.post("/api/quote")
-async def post_quote(request: Request):
+async def _handle(request: Request, fn):
     raw = await request.body()
     try:
         body = json.loads(raw)
     except (ValueError, UnicodeDecodeError):
         return _errors([{"field": "body", "message": "The request must be valid JSON"}])
     try:
-        return quote(body)
+        return fn(body)
     except ValidationError as exc:
         return _errors(exc.errors)
+
+
+@app.post("/api/quote")
+async def post_quote(request: Request):
+    return await _handle(request, quote)
+
+
+@app.post("/api/basket")
+async def post_basket(request: Request):
+    return await _handle(request, basket)

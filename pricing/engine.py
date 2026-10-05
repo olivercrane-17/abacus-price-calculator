@@ -240,12 +240,15 @@ def _summary(title, today, options, lines, subtotal, override, total, basis, war
     return "\n".join(out)
 
 
-def _result(quote_type, basis, basis_label, lines, override, warnings, comparison, summary_args, today):
+def _result(quote_type, basis, basis_label, lines, override, warnings, comparison, summary_args, today,
+            title, frequency):
     subtotal = _subtotal(lines)
     total = override["total"] if override else subtotal
-    title, options = summary_args
+    heading, options = summary_args
     return {
         "quote_type": quote_type,
+        "title": title,
+        "frequency": frequency,
         "basis": basis,
         "basis_label": basis_label,
         "lines": lines,
@@ -254,7 +257,7 @@ def _result(quote_type, basis, basis_label, lines, override, warnings, compariso
         "total": total,
         "warnings": warnings,
         "comparison": comparison,
-        "summary_text": _summary(title, today, options, lines, subtotal, override, total, basis, warnings),
+        "summary_text": _summary(heading, today, options, lines, subtotal, override, total, basis, warnings),
     }
 
 
@@ -452,8 +455,19 @@ def _quote_windows(req: dict, prices: dict, errs: _Errors, today: date) -> dict:
     options.append(f"Internal windows: {'Yes' if opts.internal else 'No'}")
     options.append(f"Price list: {prices['price_list_date']}")
 
+    name = opts.prop.name.replace(" house", "") if opts.prop.kind == "standard" else opts.prop.description
+    parts = [f"{name} windows", "one-off" if freq == "one_off" else f"every {freq} weeks"]
+    if opts.conservatory == "standard":
+        parts.append("conservatory")
+    elif opts.conservatory == "large":
+        parts.append("large conservatory")
+    if opts.internal:
+        parts.append("inside too")
+    if opts.roof_external or opts.roof_internal or opts.velux_external or opts.velux_internal             or any(e or i for e, i in opts.lanterns.values()) or opts.larger_price is not None:
+        parts.append("roof glass")
+
     return _result("windows", basis, basis_label, lines, override, warnings, comparison,
-                   ("WINDOW QUOTE", options), today)
+                   ("WINDOW QUOTE", options), today, " · ".join(parts), freq)
 
 
 # --- Gutters -------------------------------------------------------------------
@@ -545,8 +559,15 @@ def _quote_gutters(req: dict, prices: dict, errs: _Errors, today: date) -> dict:
         options.append(f"Heavily soiled: {'Yes' if soiled else 'No'}")
     options.append(f"Price list: {prices['price_list_date']}")
 
+    name = prop.name.replace(" house", "") if prop.kind == "standard" else prop.description
+    parts = [f"{name} gutters", _GUTTER_SHORT[service].split(" (")[0]]
+    if cons:
+        parts.append("conservatory")
+    if soiled and not manual:
+        parts.append("heavily soiled")
+
     return _result("gutters", "one_off", "one-off job", lines, override, warnings, None,
-                   ("GUTTER & FASCIA QUOTE", options), today)
+                   ("GUTTER & FASCIA QUOTE", options), today, " · ".join(parts), None)
 
 
 # --- Entry point ---------------------------------------------------------------
@@ -569,3 +590,72 @@ def quote(request, today: date | None = None, prices: dict | None = None) -> dic
     if quote_type == "windows":
         return _quote_windows(request, prices, errs, today)
     return _quote_gutters(request, prices, errs, today)
+
+
+# --- Basket --------------------------------------------------------------------
+
+MAX_BASKET_ITEMS = 50
+
+
+def basket(request, today: date | None = None, prices: dict | None = None) -> dict:
+    """Price every item in a basket and group the totals.
+
+    Per-visit items are grouped by frequency (they can't be added across frequencies);
+    one-off windows and all gutter work share a single one-off total. An item that fails
+    validation is returned with its errors and left out of the totals.
+    """
+    if not isinstance(request, dict):
+        raise ValidationError([{"field": "body", "message": "The request must be a JSON object"}])
+    items = request.get("items")
+    if not isinstance(items, list):
+        raise ValidationError([{"field": "items", "message": "The basket must be a list of items"}])
+    if len(items) > MAX_BASKET_ITEMS:
+        raise ValidationError([{"field": "items", "message": f"A basket can hold up to {MAX_BASKET_ITEMS} items"}])
+
+    prices = prices if prices is not None else load_prices()
+    today = today or london_today()
+
+    results = []
+    for i, item in enumerate(items):
+        try:
+            results.append({"index": i, "ok": True, "quote": quote(item, today, prices), "errors": []})
+        except ValidationError as exc:
+            results.append({"index": i, "ok": False, "quote": None, "errors": exc.errors})
+
+    groups = []
+    for f in prices["windows"]["frequencies"]:
+        matching = [r["quote"] for r in results if r["ok"] and r["quote"]["frequency"] == f]
+        if matching:
+            groups.append({"basis": "per_visit", "frequency": f, "label": _frequency_label(f),
+                           "suffix": "per visit", "total": sum(q["total"] for q in matching),
+                           "items": len(matching)})
+    one_offs = [r["quote"] for r in results if r["ok"] and r["quote"]["basis"] == "one_off"]
+    if one_offs:
+        groups.append({"basis": "one_off", "frequency": None, "label": "One-off total", "suffix": "one-off",
+                       "total": sum(q["total"] for q in one_offs), "items": len(one_offs)})
+
+    return {"count": len(results), "items": results, "groups": groups,
+            "summary_text": _basket_summary(results, groups, today)}
+
+
+def _basket_summary(results, groups, today) -> str:
+    out = ["ABACUS WINDOW CLEANING: BASKET", today.strftime("%d/%m/%Y")]
+    n = len(results)
+    for r in results:
+        out.append("")
+        if not r["ok"]:
+            out.append(f"ITEM {r['index'] + 1} OF {n}: needs attention (not included in totals)")
+            out += [f"  {e['message']}" for e in r["errors"]]
+            continue
+        q = r["quote"]
+        out.append(f"ITEM {r['index'] + 1} OF {n}: {q['title']}")
+        body = q["summary_text"].splitlines()[2:]  # drop the per-quote heading and date
+        out += [l for l in body if l != "Prices include VAT."]
+    out += ["", "=" * SUMMARY_WIDTH, "BASKET TOTALS"]
+    for g in groups:
+        out.append(_row(f"{g['label']} ({g['suffix']})" if g["basis"] == "per_visit" else g["label"],
+                        format_pence(g["total"])))
+    if not groups:
+        out.append("No priced items")
+    out.append("Prices include VAT.")
+    return "\n".join(out)
