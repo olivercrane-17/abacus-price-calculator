@@ -88,6 +88,10 @@ export interface ComparisonItem {
 
 export interface QuoteResponse {
   quote_type: "windows" | "gutters";
+  /** Short item name, e.g. "3 bed windows · every 4 weeks · conservatory". */
+  title: string;
+  /** Windows frequency, or null for gutters. */
+  frequency: WindowsFrequency | null;
   basis: "per_visit" | "one_off";
   basis_label: string;
   lines: QuoteLine[];
@@ -102,4 +106,29 @@ export interface QuoteResponse {
 export interface FieldError {
   field: string;
   message: string;
+}
+
+/* ---------- Basket ---------- */
+
+export interface BasketItemResult {
+  index: number;
+  ok: boolean;
+  quote: QuoteResponse | null;
+  errors: FieldError[];
+}
+
+export interface BasketGroup {
+  basis: "per_visit" | "one_off";
+  frequency: Frequency | null;
+  label: string;
+  suffix: string;
+  total: number;
+  items: number;
+}
+
+export interface BasketResponse {
+  count: number;
+  items: BasketItemResult[];
+  groups: BasketGroup[];
+  summary_text: string;
 }

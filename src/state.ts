@@ -138,6 +138,79 @@ export function guttersRequest(s: GuttersState): GuttersRequest {
   };
 }
 
+/* ---------- Request → form state (the inverse, for editing basket items) ---------- */
+
+/** Pounds back to the text a member of staff would have typed. parsePounds() reads it back exactly. */
+function poundsText(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "";
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
+function overrideState(o: OverrideRequest | null | undefined): OverrideState {
+  if (!o) return { ...emptyOverride };
+  return { open: true, total: poundsText(o.total), reason: o.reason ?? "" };
+}
+
+function propertyChoice(p: PropertyRequest): PropertyChoice {
+  if (p.kind === "other") return "other";
+  const n = String(p.bedrooms);
+  return (["1", "2", "3", "4", "5"] as const).find((c) => c === n) ?? "3";
+}
+
+const count = (n: number | undefined) => (typeof n === "number" && n >= 0 ? n : 0);
+
+/** Load a windows request back into the form. windowsRequest(windowsState(r)) round-trips. */
+export function windowsState(r: WindowsRequest): WindowsState {
+  const base = initialWindows();
+  const isOther = r.property.kind === "other";
+  const lanterns = r.lanterns ?? base.lanterns;
+  const largerPrice = r.lanterns?.larger_price ?? null;
+  return {
+    ...base,
+    property: propertyChoice(r.property),
+    otherDescription: r.property.kind === "other" ? r.property.description : "",
+    otherPrice: r.property.kind === "other" ? poundsText(r.property.price) : "",
+    frequency: r.frequency ?? base.frequency,
+    conservatory: isOther ? "none" : (r.conservatory ?? "none"),
+    largeConservatoryPrice: r.conservatory === "large" ? poundsText(r.large_conservatory_price) : "",
+    internal: !!r.internal,
+    roof: {
+      external: count(r.conservatory_roof?.external_panels),
+      internal: count(r.conservatory_roof?.internal_panels),
+    },
+    velux: { external: count(r.velux?.external), internal: count(r.velux?.internal) },
+    lanterns: {
+      small: { external: count(lanterns.small?.external), internal: count(lanterns.small?.internal) },
+      medium: { external: count(lanterns.medium?.external), internal: count(lanterns.medium?.internal) },
+      large: { external: count(lanterns.large?.external), internal: count(lanterns.large?.internal) },
+    },
+    largerLantern: largerPrice !== null,
+    largerLanternPrice: poundsText(largerPrice),
+    override: overrideState(r.override),
+  };
+}
+
+/** Load a gutters request back into the form. guttersRequest(guttersState(r)) round-trips. */
+export function guttersState(r: GuttersRequest, askAbout: string[]): GuttersState {
+  const base = initialGutters(askAbout);
+  const choice = propertyChoice(r.property);
+  const staffPriced = choice === "other" || choice === "1";
+  return {
+    ...base,
+    property: choice,
+    otherDescription: r.property.kind === "other" ? r.property.description : "",
+    service: r.service ?? base.service,
+    conservatory: !!r.conservatory,
+    heavilySoiled: staffPriced ? false : !!r.heavily_soiled,
+    manualPrice: staffPriced ? poundsText(r.manual_price) : "",
+    extras:
+      r.extras && r.extras.length
+        ? r.extras.map((x) => ({ name: x.name, selected: !!x.selected, price: poundsText(x.price) }))
+        : base.extras,
+    override: overrideState(r.override),
+  };
+}
+
 /* ---------- Matching API errors to fields ---------- */
 
 /**

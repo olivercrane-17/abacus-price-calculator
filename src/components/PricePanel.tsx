@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useId, useRef, useState } from "react";
+import { copyText } from "../clipboard";
 import { formatPence } from "../format";
 import { useCountUp, usePrefersReducedMotion } from "../hooks";
 import type { OverrideState } from "../state";
@@ -20,6 +21,9 @@ interface Props {
   onOverride: (o: OverrideState) => void;
   overrideErrors: { total?: string; reason?: string };
   compact: boolean;
+  /** The request behind `result` is the one the form currently describes. */
+  current: boolean;
+  basket: BasketActionProps;
 }
 
 function AnimatedTotal({ pence }: { pence: number }) {
@@ -57,6 +61,8 @@ export function PricePanel(props: Props) {
   }, [compact, expanded]);
 
   const totalText = showResult ? formatPence(shownTotal) : "";
+  // Only a fresh, fully valid quote (override included) can go in the basket.
+  const ready = !!result && errors.length === 0 && !loading && !unreachable && props.current;
 
   return (
     <>
@@ -98,7 +104,7 @@ export function PricePanel(props: Props) {
           </div>
 
           {/* Total */}
-          <div className="total" aria-live="polite" aria-atomic="true">
+          <div className={`total ${compact ? "" : "total--with-action"}`} aria-live="polite" aria-atomic="true">
             <span className="sr-only">{showResult ? `Total ${totalText}, ${result.basis_label}` : ""}</span>
             {hasOverride && (
               <div className="total__was" aria-hidden="true">
@@ -122,6 +128,7 @@ export function PricePanel(props: Props) {
             {hasOverride && <p className="total__reason">Override: {result.override!.reason}</p>}
             {overrideOnly && <p className="total__pending">Override not applied: finish the details below.</p>}
           </div>
+          {!compact && <BasketAction action={props.basket} ready={ready} />}
 
           {unreachable && (
             <div className="notice notice--offline" role="alert">
@@ -213,6 +220,7 @@ export function PricePanel(props: Props) {
         </div>
 
         <div className="panel__foot" hidden={compact && !expanded}>
+          {compact && <BasketAction action={props.basket} ready={ready} />}
           <CopyButton text={showResult && !overrideOnly && !unreachable ? result.summary_text : null} />
         </div>
       </aside>
@@ -332,30 +340,17 @@ function OverrideControl({
 
 /* ---------- Copy ---------- */
 
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {
-      ok = false;
-    }
-    ta.remove();
-    return ok;
-  }
-}
-
-function CopyButton({ text }: { text: string | null }) {
+export function CopyButton({
+  text,
+  label = "Copy for records",
+  textLabel = "Quote summary for records",
+  variant = "secondary",
+}: {
+  text: string | null;
+  label?: string;
+  textLabel?: string;
+  variant?: "primary" | "secondary";
+}) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<number>(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -365,7 +360,7 @@ function CopyButton({ text }: { text: string | null }) {
     <div className="copy">
       <button
         type="button"
-        className={`btn btn--copy ${state === "copied" ? "is-done" : ""}`}
+        className={`btn btn--copy btn--copy-${variant} ${state === "copied" ? "is-done" : ""}`}
         disabled={!text}
         onClick={async () => {
           if (!text) return;
@@ -388,7 +383,7 @@ function CopyButton({ text }: { text: string | null }) {
               <rect x="5" y="5" width="8.5" height="8.5" rx="1.5" />
               <path d="M10.5 3H4a1.5 1.5 0 0 0-1.5 1.5V11" />
             </svg>
-            Copy for records
+            {label}
           </>
         )}
       </button>
@@ -403,7 +398,7 @@ function CopyButton({ text }: { text: string | null }) {
           <textarea
             className="copy__text"
             readOnly
-            aria-label="Quote summary for records"
+            aria-label={textLabel}
             value={text}
             rows={6}
             ref={(el) => {
@@ -415,6 +410,89 @@ function CopyButton({ text }: { text: string | null }) {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Add to basket / Update item ---------- */
+
+export interface BasketActionProps {
+  mode: "add" | "update";
+  /** 1-based position of the item being edited. */
+  itemNumber: number | null;
+  /** Items in the basket now. */
+  count: number;
+  /** The basket has no room for another item. */
+  full: boolean;
+  /** Commit the current quote. Return false if nothing was committed. */
+  onCommit: (from: HTMLElement) => boolean;
+  onCancel: () => void;
+  onOpen: () => void;
+}
+
+function BasketAction({ action, ready }: { action: BasketActionProps; ready: boolean }) {
+  const [flash, setFlash] = useState<null | "add" | "update">(null);
+  const timer = useRef<number>(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const isUpdate = action.mode === "update";
+  const blockedByFull = !isUpdate && action.full;
+  const disabled = !ready || blockedByFull;
+
+  return (
+    <div className="bact">
+      <button
+        type="button"
+        className={`btn btn--basket ${flash ? "is-done" : ""}`}
+        disabled={disabled && !flash}
+        aria-disabled={flash ? true : undefined}
+        onClick={(e) => {
+          if (flash || disabled) return;
+          const kind = action.mode;
+          if (!action.onCommit(e.currentTarget)) return;
+          setFlash(kind);
+          window.clearTimeout(timer.current);
+          timer.current = window.setTimeout(() => setFlash(null), 1400);
+        }}
+      >
+        {flash ? (
+          <>
+            {flash === "add" ? "Added" : "Updated"}
+            <svg viewBox="0 0 16 16" aria-hidden="true" className="btn__icon">
+              <path d="M3 8.5l3.2 3L13 4.5" />
+            </svg>
+          </>
+        ) : isUpdate ? (
+          <>
+            <svg viewBox="0 0 16 16" aria-hidden="true" className="btn__icon">
+              <path d="M2.8 6.2A5.5 5.5 0 1 1 2.5 9.5" />
+              <path d="M2.5 2.8v3.6h3.6" />
+            </svg>
+            Update item {action.itemNumber}
+          </>
+        ) : (
+          <>
+            <svg viewBox="0 0 20 20" aria-hidden="true" className="btn__icon btn__icon--basket">
+              <path d="M3 7.5h14l-1.4 8.2a1.6 1.6 0 0 1-1.6 1.3H6a1.6 1.6 0 0 1-1.6-1.3Z" />
+              <path d="M7 7.5 9 3M13 7.5 11 3" />
+              <path d="M10 10.2v4M8 12.2h4" />
+            </svg>
+            Add to basket
+          </>
+        )}
+      </button>
+      {blockedByFull && <p className="bact__note">The basket is full ({action.count} items).</p>}
+      <div className="bact__links">
+        {isUpdate && !flash && (
+          <button type="button" className="link-btn" onClick={action.onCancel}>
+            Cancel edit
+          </button>
+        )}
+        {action.count > 0 && (
+          <button type="button" className="link-btn bact__view" data-basket-target="panel" onClick={action.onOpen}>
+            View basket ({action.count} {action.count === 1 ? "item" : "items"})
+          </button>
+        )}
+      </div>
     </div>
   );
 }

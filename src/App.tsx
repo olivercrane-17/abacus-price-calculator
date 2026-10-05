@@ -1,16 +1,21 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { BASKET_MAX, useBasket } from "./basket";
+import { BasketButton, BasketDrawer, flyToBasket, itemTitle, UndoToast, type Removed } from "./components/Basket";
 import { GuttersForm, guttersFields } from "./components/GuttersForm";
 import { Logo } from "./components/Logo";
 import { PricePanel } from "./components/PricePanel";
 import { WindowsForm, WINDOWS_FIELDS } from "./components/WindowsForm";
-import { useConfig, useMediaQuery, useQuote } from "./hooks";
+import { formatPence } from "./format";
+import { useConfig, useMediaQuery, usePrefersReducedMotion, useQuote } from "./hooks";
 import {
   errorFor,
   guttersRequest,
+  guttersState,
   initialGutters,
   initialWindows,
   unmatchedErrors,
   windowsRequest,
+  windowsState,
   type GuttersState,
   type WindowsState,
 } from "./state";
@@ -49,6 +54,7 @@ function Calculator({ config }: { config: Config }) {
   const [win, setWin] = useState<WindowsState>(initialWindows);
   const [gut, setGut] = useState<GuttersState>(() => initialGutters(config.gutters.ask_about));
   const compact = useMediaQuery("(max-width: 899px)");
+  const reduced = usePrefersReducedMotion();
 
   const setW = useCallback((p: Partial<WindowsState>) => setWin((s) => ({ ...s, ...p })), []);
   const setG = useCallback((p: Partial<GuttersState>) => setGut((s) => ({ ...s, ...p })), []);
@@ -60,18 +66,148 @@ function Calculator({ config }: { config: Config }) {
 
   const isWin = tab === "windows";
   const q = isWin ? winQ : gutQ;
+  const req = isWin ? winReq : gutReq;
   const override = isWin ? win.override : gut.override;
   const known = isWin ? WINDOWS_FIELDS : guttersFields(gut.extras.length);
 
-  const reset = () => {
-    if (isWin) setWin(initialWindows());
+  /* ----- Basket ----- */
+  const basket = useBasket();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; tab: Tab } | null>(null);
+  const [removed, setRemoved] = useState<Removed | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const basketBtnRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const announceTimer = useRef(0);
+
+  const announce = useCallback((msg: string) => {
+    // Clear first so a repeated message is announced again.
+    setAnnouncement("");
+    window.clearTimeout(announceTimer.current);
+    announceTimer.current = window.setTimeout(() => setAnnouncement(msg), 40);
+  }, []);
+
+  const editIndex = editing ? basket.items.findIndex((i) => i.id === editing.id) : -1;
+  // The item being edited was removed or cleared: stop editing.
+  useEffect(() => {
+    if (editing && editIndex === -1) setEditing(null);
+  }, [editing, editIndex]);
+  const editingHere = editing && editing.tab === tab && editIndex !== -1 ? editing : null;
+
+  const resetTab = (t: Tab) => {
+    if (t === "windows") setWin(initialWindows());
     else setGut(initialGutters(config.gutters.ask_about));
     setResets((n) => n + 1);
   };
 
+  const reset = () => {
+    resetTab(tab);
+    if (editingHere) setEditing(null);
+  };
+
+  /** Add the current quote to the basket, or write it back over the item being edited. */
+  const commit = (from: HTMLElement): boolean => {
+    const quote = q.result;
+    const request = q.resultFor;
+    if (!quote || !request || request !== req) return false;
+    if (editingHere) {
+      basket.update(editingHere.id, request, quote);
+      setEditing(null);
+      announce(`Item ${editIndex + 1} updated: ${quote.title}, ${formatPence(quote.total)} ${basisWord(quote.basis)}.`);
+    } else {
+      if (basket.items.length >= BASKET_MAX) return false;
+      basket.add(request, quote);
+      flyToBasket(from, "Added", reduced);
+      const n = basket.items.length + 1;
+      announce(
+        `Added to basket: ${quote.title}, ${formatPence(quote.total)} ${basisWord(quote.basis)}. ${n} ${
+          n === 1 ? "item" : "items"
+        } in the basket.`,
+      );
+    }
+    resetTab(tab);
+    return true;
+  };
+
+  const cancelEdit = () => {
+    if (!editingHere) return;
+    setEditing(null);
+    resetTab(tab);
+    announce("Edit cancelled. The basket item is unchanged.");
+  };
+
+  const openDrawer = () => {
+    openerRef.current = (document.activeElement as HTMLElement | null) ?? basketBtnRef.current;
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = useCallback((opts?: { returnFocus?: boolean }) => {
+    setDrawerOpen(false);
+    if (opts?.returnFocus === false) return;
+    const back = openerRef.current?.isConnected ? openerRef.current : basketBtnRef.current;
+    window.setTimeout(() => back?.focus(), 0);
+  }, []);
+
+  const editItem = (id: string) => {
+    const index = basket.items.findIndex((i) => i.id === id);
+    if (index === -1) return;
+    const r = basket.items[index].request;
+    const t: Tab = r.quote_type;
+    if (r.quote_type === "windows") setWin(windowsState(r));
+    else setGut(guttersState(r, config.gutters.ask_about));
+    setTab(t);
+    setResets((n) => n + 1);
+    setEditing({ id, tab: t });
+    closeDrawer({ returnFocus: false });
+    announce(`Editing item ${index + 1} in the ${t === "windows" ? "Windows" : "Gutters & fascias"} tab.`);
+    window.setTimeout(() => {
+      bannerRef.current?.focus({ preventScroll: true });
+      bannerRef.current?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+    }, 80);
+  };
+
+  const removeItem = (id: string) => {
+    const index = basket.items.findIndex((i) => i.id === id);
+    if (index === -1) return;
+    const p = basket.pricedItems[index];
+    const title = itemTitle(p);
+    basket.remove(id);
+    setRemoved({ item: p.item, index, title });
+    announce(`Removed item ${index + 1}, ${title}. Undo is available for 5 seconds.`);
+    // Keep focus in the drawer: on the Edit button of the item that moved up, or the dialog itself.
+    window.setTimeout(() => {
+      const edits = document.querySelectorAll<HTMLElement>(".drawer .bitem__btn--edit");
+      const next = edits[Math.min(index, edits.length - 1)];
+      (next ?? document.querySelector<HTMLElement>(".drawer"))?.focus();
+    }, 230);
+  };
+
+  const undoRemove = () => {
+    if (!removed) return;
+    basket.restore(removed.item, removed.index);
+    announce(`Restored item ${removed.index + 1}, ${removed.title}.`);
+    setRemoved(null);
+    if (drawerOpen) window.setTimeout(() => document.querySelector<HTMLElement>(".drawer")?.focus(), 0);
+  };
+
+  const dismissToast = useCallback(() => setRemoved(null), []);
+
+  const clearBasket = () => {
+    const n = basket.items.length;
+    basket.clear();
+    setRemoved(null);
+    announce(`Basket cleared. ${n} ${n === 1 ? "item" : "items"} removed.`);
+  };
+
   return (
     <>
-      <Header tab={tab} onTab={setTab} onReset={reset} />
+      <Header
+        tab={tab}
+        onTab={setTab}
+        onReset={reset}
+        basket={<BasketButton ref={basketBtnRef} count={basket.items.length} open={drawerOpen} onOpen={openDrawer} />}
+      />
       <main className="layout">
         <div
           className="layout__form"
@@ -80,6 +216,20 @@ function Calculator({ config }: { config: Config }) {
           aria-labelledby={`tab-${tab}`}
           key={`${tab}-${resets}`}
         >
+          {editingHere && (
+            <div className="edit-banner" ref={bannerRef} tabIndex={-1}>
+              <span className="edit-banner__n" aria-hidden="true">
+                {editIndex + 1}
+              </span>
+              <p className="edit-banner__text">
+                <b>Editing item {editIndex + 1}</b>
+                <span>Change the details, then press Update item.</span>
+              </p>
+              <button type="button" className="edit-banner__cancel" onClick={cancelEdit}>
+                Cancel edit
+              </button>
+            </div>
+          )}
           {isWin ? (
             <WindowsForm config={config} state={win} set={setW} errors={winQ.errors} />
           ) : (
@@ -104,23 +254,57 @@ function Calculator({ config }: { config: Config }) {
               reason: errorFor(q.errors, "override.reason"),
             }}
             compact={compact}
+            current={q.resultFor === req}
+            basket={{
+              mode: editingHere ? "update" : "add",
+              itemNumber: editingHere ? editIndex + 1 : null,
+              count: basket.items.length,
+              full: basket.items.length >= BASKET_MAX,
+              onCommit: commit,
+              onCancel: cancelEdit,
+              onOpen: openDrawer,
+            }}
           />
         </div>
       </main>
       <Footer config={config} />
+      <BasketDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        items={basket.pricedItems}
+        groups={basket.groups}
+        summary={basket.summary}
+        stale={basket.stale}
+        loading={basket.loading}
+        failed={basket.failed}
+        hasPriced={basket.hasPriced}
+        onRetry={basket.retry}
+        editingId={editing?.id ?? null}
+        onEdit={editItem}
+        onRemove={removeItem}
+        onClear={clearBasket}
+        toast={<UndoToast removed={removed} onUndo={undoRemove} onDone={dismissToast} />}
+      />
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
     </>
   );
 }
+
+const basisWord = (b: "per_visit" | "one_off") => (b === "per_visit" ? "per visit" : "one-off");
 
 function Header({
   tab,
   onTab,
   onReset,
+  basket,
   disabled = false,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   onReset: () => void;
+  basket?: ReactNode;
   disabled?: boolean;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -138,6 +322,7 @@ function Header({
         <div className="masthead__brand">
           <Logo variant="light" />
           <span className="masthead__tool">Price calculator</span>
+          {basket && <div className="masthead__basket">{basket}</div>}
         </div>
         <div className="masthead__bar">
           <div role="tablist" aria-label="Quote type" className="tabs">

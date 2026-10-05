@@ -1636,7 +1636,8 @@ button:disabled {
   font-size: 14px;
 }
 
-.btn--copy {
+.btn--copy,
+.btn--basket {
   width: 100%;
   height: 52px;
   background: #fff;
@@ -1644,18 +1645,127 @@ button:disabled {
   font-size: 16.5px;
 }
 
-.btn--copy:hover:not(:disabled) {
+.btn--copy:hover:not(:disabled),
+.btn--basket:hover:not(:disabled):not(.is-done) {
   background: var(--royal-tint);
 }
 
-.btn--copy.is-done {
+.btn--copy.is-done,
+.btn--basket.is-done {
   background: var(--ok);
   color: #053321;
 }
 
-.btn--copy:disabled {
+.btn--copy:disabled,
+.btn--basket:disabled {
   background: rgba(255, 255, 255, 0.14);
   color: var(--on-blue-3);
+}
+
+/* In the price panel, Add to basket leads and Copy steps back. */
+.btn--copy-secondary {
+  height: 46px;
+  background: transparent;
+  color: #fff;
+  font-size: 15.5px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.btn--copy-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn--copy-secondary:disabled {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--on-blue-line);
+}
+
+.btn--copy-secondary.is-done {
+  box-shadow: none;
+}
+
+.btn--basket {
+  height: 58px;
+  font-size: 17.5px;
+  font-weight: 700;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.55);
+}
+
+.btn--basket.is-done {
+  cursor: default;
+  animation: basket-done 0.42s var(--ease);
+}
+
+.btn--basket:disabled {
+  box-shadow: none;
+}
+
+.btn__icon--basket {
+  width: 21px;
+  height: 21px;
+}
+
+@keyframes basket-done {
+  40% {
+    transform: scale(1.03);
+  }
+}
+
+.btn--danger {
+  background: var(--error-on-blue);
+  color: #5c0d07;
+}
+
+.btn--danger:hover {
+  background: #fff;
+}
+
+/* Add to basket, under the total */
+
+.total--with-action {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.bact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel__body > .bact {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--on-blue-line);
+}
+
+.panel__foot .bact {
+  margin-bottom: 12px;
+}
+
+.bact__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--amber);
+}
+
+.bact__links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bact__links:empty {
+  display: none;
+}
+
+.bact__links .link-btn {
+  margin: 0;
+}
+
+.bact__view {
+  margin-left: auto !important;
 }
 
 .copy__fail {
@@ -1676,6 +1786,847 @@ button:disabled {
     monospace;
   color: var(--ink);
   background: #fff;
+}
+
+/* ==========================================================================
+   Basket
+   ========================================================================== */
+
+/* Header button: the count sits in an amber bead, like the one on the masthead abacus. */
+
+.masthead__basket {
+  margin-left: auto;
+  align-self: center;
+}
+
+.basket-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 46px;
+  padding: 0 8px 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  /* Solid enough that the decorative beads behind don't show through. */
+  background: #1a2590;
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.basket-btn:hover {
+  background: #26319a;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.basket-btn:focus-visible {
+  outline-color: var(--focus-on-blue);
+  outline-offset: 3px;
+}
+
+.basket-btn__icon {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.basket-btn__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--on-blue-2);
+  font-weight: 700;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.basket-btn.has-items .basket-btn__count {
+  background: var(--amber);
+  color: var(--amber-ink);
+}
+
+.basket-btn__count[data-bump] {
+  animation: bead-bump 0.46s var(--ease);
+}
+
+@keyframes bead-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.38);
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The chip that flies from Add to basket into the header button. */
+.fly-chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px 7px 10px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 14.5px;
+  box-shadow: 0 10px 24px -8px rgba(5, 11, 74, 0.55);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.fly-chip svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* "Editing item N" banner above the form. */
+
+.edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 16px 12px 12px;
+  background: var(--royal-tint);
+  border: 1px solid var(--royal-tint-2);
+  border-radius: var(--r-md);
+  animation: fade-in 0.25s var(--ease);
+}
+
+.edit-banner:focus-visible {
+  outline-offset: 2px;
+}
+
+.edit-banner__n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--royal);
+  color: #fff;
+  font-weight: 700;
+}
+
+.edit-banner__text {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.edit-banner__text b {
+  color: var(--royal);
+  font-size: 16.5px;
+}
+
+.edit-banner__text span {
+  color: var(--slate);
+  font-size: 14px;
+}
+
+.edit-banner__cancel {
+  flex: none;
+  border: 1px solid var(--royal-tint-2);
+  background: var(--surface);
+  color: var(--royal);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+
+.edit-banner__cancel:hover {
+  border-color: var(--royal);
+}
+
+/* Drawer */
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(5, 11, 74, 0.5);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(468px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  box-shadow: -24px 0 56px -24px rgba(5, 11, 74, 0.6);
+}
+
+.drawer:focus-visible {
+  outline: none;
+}
+
+.drawer__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 20px 20px 26px;
+  background: var(--royal);
+  color: #fff;
+}
+
+.drawer__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.drawer__meta {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  color: var(--on-blue-2);
+}
+
+.drawer__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--on-blue-3);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.drawer__status.is-on {
+  opacity: 1;
+  transition-delay: 0.15s;
+}
+
+.drawer__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--on-blue-line);
+  background: transparent;
+  color: #fff;
+}
+
+.drawer__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.drawer__close:focus-visible {
+  outline-color: var(--focus-on-blue);
+}
+
+.drawer__close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.drawer__offline {
+  flex: none;
+  margin: 14px 20px 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: inset 4px 0 0 var(--amber-edge);
+  font-size: 14.5px;
+}
+
+.drawer__offline p {
+  margin: 0 0 10px;
+}
+
+.drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Items */
+
+.bitems {
+  list-style: none;
+  margin: 0;
+  padding: 6px 20px 16px;
+}
+
+.bitem {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 0 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bitem__num {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--royal-tint-2);
+  color: var(--royal);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.bitem.is-editing .bitem__num {
+  background: var(--royal);
+  color: #fff;
+}
+
+.bitem.is-attention .bitem__num {
+  background: var(--error);
+  color: #fff;
+}
+
+.bitem__main {
+  min-width: 0;
+}
+
+.bitem__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 999px;
+}
+
+.tag--windows {
+  background: var(--royal-tint);
+  color: var(--royal);
+  box-shadow: inset 0 0 0 1px var(--royal-tint-2);
+}
+
+.tag--gutters {
+  background: #e7eaf0;
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.tag--editing {
+  background: var(--royal);
+  color: #fff;
+}
+
+.tag--attention {
+  background: var(--error-soft);
+  color: var(--error);
+  box-shadow: inset 0 0 0 1px #f5c2bd;
+}
+
+.bitem__title {
+  margin: 8px 0 0;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.bitem__override {
+  display: inline-block;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber-ink);
+  background: var(--amber);
+  padding: 3px 9px;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+.bitem__errors {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--error-soft);
+  color: var(--error);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bitem__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.bitem__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.bitem__btn:hover {
+  border-color: var(--royal);
+  color: var(--royal);
+}
+
+.bitem.is-attention .bitem__btn--edit {
+  background: var(--royal);
+  border-color: var(--royal);
+  color: #fff;
+}
+
+.bitem__btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bitem__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  padding-top: 1px;
+}
+
+.bitem__price b {
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.bitem__price > span {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15.5px;
+  color: var(--slate);
+}
+
+.bitem__was {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--slate);
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--amber-edge);
+  font-variant-numeric: tabular-nums;
+}
+
+.bitem__price .bitem__nil {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--slate);
+}
+
+.bitem.is-attention .bitem__nil {
+  color: var(--error);
+}
+
+/* Empty basket: an abacus rod with every bead still waiting at the start. */
+
+.basket-empty {
+  padding: 40px 30px;
+  color: var(--slate);
+}
+
+.basket-empty__art {
+  display: block;
+  width: 220px;
+  height: auto;
+  margin-bottom: 22px;
+}
+
+.basket-empty__art line {
+  stroke: var(--line-strong);
+  stroke-width: 2;
+}
+
+.basket-empty__art circle {
+  fill: var(--royal-tint-2);
+}
+
+.basket-empty__art circle.is-amber {
+  fill: var(--amber);
+}
+
+.basket-empty__title {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 27px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.basket-empty p {
+  margin: 0 0 22px;
+  max-width: 36ch;
+}
+
+.basket-empty b {
+  color: var(--royal);
+}
+
+/* Totals tray */
+
+.drawer__foot {
+  flex: none;
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+  background: var(--royal);
+  color: #fff;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: 0 -14px 30px -18px rgba(5, 11, 74, 0.6);
+}
+
+.drawer__foot :focus-visible {
+  outline-color: var(--focus-on-blue);
+}
+
+.groups-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.groups-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 22px;
+}
+
+.groups-note {
+  font-size: 13px;
+  color: var(--on-blue-3);
+  text-align: right;
+}
+
+.groups {
+  list-style: none;
+  margin: 4px 0 14px;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+.drawer__foot.is-stale .groups {
+  opacity: 0.6;
+}
+
+.group {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--on-blue-line);
+}
+
+.group__label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 16.5px;
+  line-height: 1.25;
+}
+
+.group__label small {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--on-blue-3);
+}
+
+.group__total {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.group__total b {
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.group__total span {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--on-blue-2);
+}
+
+.groups-empty {
+  margin: 10px 0 16px;
+  font-size: 14.5px;
+  color: var(--on-blue-2);
+}
+
+.drawer__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.drawer__actions .copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn--ghost-on-blue {
+  background: transparent;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.btn--ghost-on-blue:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.drawer__clear {
+  flex: none;
+  height: 52px;
+  font-size: 15px;
+  padding: 0 16px;
+}
+
+.clear-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--royal-900);
+  font-size: 15px;
+  font-weight: 600;
+  animation: fade-in 0.18s var(--ease);
+}
+
+.clear-confirm__btns {
+  display: flex;
+  gap: 10px;
+}
+
+/* Undo toast */
+
+.basket-layer {
+  display: contents;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 12px 14px 18px;
+  border-radius: 14px;
+  background: var(--royal-900);
+  color: #fff;
+  box-shadow: 0 18px 40px -16px rgba(5, 11, 74, 0.7);
+  overflow: hidden;
+}
+
+.drawer ~ .toast {
+  right: calc(min(468px, 100vw) + 24px);
+}
+
+.toast__text {
+  margin: 0;
+  font-size: 15px;
+  color: var(--on-blue-2);
+  min-width: 0;
+}
+
+.toast__text b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.toast__undo {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.toast__undo:hover {
+  background: #ffd36b;
+}
+
+.toast__undo:focus-visible {
+  outline-color: var(--focus-on-blue);
+}
+
+.toast__timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--amber);
+  transform-origin: left;
+  animation: toast-timer var(--toast-ms, 5000ms) linear forwards;
+}
+
+.toast.is-paused .toast__timer {
+  animation-play-state: paused;
+}
+
+@keyframes toast-timer {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* No room beside the drawer: the toast sits over the top of the list instead. */
+@media (max-width: 959px) {
+  .drawer ~ .toast {
+    top: 100px;
+    bottom: auto;
+    right: 16px;
+  }
+}
+
+@media (max-width: 899px) {
+  .toast {
+    bottom: 100px;
+  }
+}
+
+@media (max-width: 640px) {
+  .toast,
+  .drawer ~ .toast {
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+  .drawer__head {
+    padding: 16px 14px 16px 20px;
+  }
+  .drawer__title {
+    font-size: 28px;
+  }
+  .bitems {
+    padding: 4px 16px 12px;
+  }
+  .bitem {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 0 12px;
+  }
+  .bitem__num {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+  .bitem__price b {
+    font-size: 19px;
+  }
+  .drawer__foot {
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .group__total b {
+    font-size: 24px;
+  }
+  .drawer__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .drawer__clear {
+    height: 44px;
+  }
+  .basket-btn {
+    height: 42px;
+    padding-left: 13px;
+  }
+  .edit-banner {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .edit-banner__text {
+    flex-basis: calc(100% - 48px);
+  }
+  .edit-banner__cancel {
+    margin-left: 48px;
+  }
 }
 
 /* ---------- Footer ---------- */
@@ -1982,9 +2933,6 @@ button:disabled {
   .reset {
     align-self: flex-end;
     margin: 0;
-    position: absolute;
-    top: 22px;
-    right: var(--gutter);
   }
   .tab {
     flex: 1;

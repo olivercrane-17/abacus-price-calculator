@@ -25,6 +25,8 @@ export function useConfig() {
 export interface QuoteState {
   /** Last successful response for the current tab (kept while loading or after a network failure). */
   result: QuoteResponse | null;
+  /** The exact request that produced `result`. */
+  resultFor: QuoteRequest | null;
   /** 422 errors for the latest request. */
   errors: FieldError[];
   loading: boolean;
@@ -37,7 +39,7 @@ export interface QuoteState {
  * `request` must be memoised by the caller so it only changes when inputs change.
  */
 export function useQuote(request: QuoteRequest | null, delay = 120): QuoteState {
-  const [result, setResult] = useState<QuoteResponse | null>(null);
+  const [priced, setPriced] = useState<{ result: QuoteResponse; request: QuoteRequest } | null>(null);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -58,7 +60,7 @@ export function useQuote(request: QuoteRequest | null, delay = 120): QuoteState 
       postQuote(request, ctrl.signal)
         .then((res) => {
           if (ctrl.signal.aborted) return;
-          setResult(res);
+          setPriced({ result: res, request });
           setErrors([]);
           setUnreachable(false);
           setLoading(false);
@@ -79,7 +81,14 @@ export function useQuote(request: QuoteRequest | null, delay = 120): QuoteState 
 
   useEffect(() => () => ctrlRef.current?.abort(), []);
 
-  return { result, errors, loading, unreachable, retry: useCallback(() => setAttempt((n) => n + 1), []) };
+  return {
+    result: priced?.result ?? null,
+    resultFor: priced?.request ?? null,
+    errors,
+    loading,
+    unreachable,
+    retry: useCallback(() => setAttempt((n) => n + 1), []),
+  };
 }
 
 export function usePrefersReducedMotion(): boolean {
