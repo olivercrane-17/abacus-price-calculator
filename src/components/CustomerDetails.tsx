@@ -337,7 +337,7 @@ function CustomerFields({
         />
       </div>
 
-      <div className="cust__chips">
+      <div className="cust__chips cust__chips--contact">
         <Segmented<ContactMethod | "">
           label="Preferred contact"
           options={CONTACT_METHODS.map((m) => ({ value: m.value, label: m.label }))}
@@ -348,7 +348,7 @@ function CustomerFields({
         />
       </div>
 
-      <div className="cust__chips">
+      <div className="cust__chips cust__chips--heard">
         <Segmented<HeardVia | "">
           label="How they heard of us"
           options={HEARD_VIA.map((h) => ({ value: h.value, label: h.label }))}
@@ -423,7 +423,7 @@ function AddressPicker({ options, onPick }: { options: AddressLookup["addresses"
   const id = useId();
   const [value, setValue] = useState("");
   return (
-    <div className="field">
+    <div className="field cust__f-picker">
       <label htmlFor={id} className="field-label">
         Address
       </label>
@@ -460,7 +460,7 @@ function NotesField({ value, onChange }: { value: string; onChange: (v: string) 
     el.style.height = `${Math.max(el.scrollHeight + 2, 84)}px`;
   }, [value]);
   return (
-    <div className="field">
+    <div className="field cust__f-notes">
       <label htmlFor={id} className="field-label">
         Notes
       </label>

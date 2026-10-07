@@ -3878,23 +3878,42 @@ button:disabled {
   width: 100vw;
 }
 
-.drawer.is-full .drawer__cols {
-  width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-}
-
 .drawer__side {
   flex: 1 1 0;
   min-width: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px 8px 28px;
+  padding: 8px 12px 28px;
   border-right: 1px solid var(--line);
 }
 
+/* On very wide screens the form stops growing, so fields don't become absurdly long. */
+.drawer__side .cust {
+  max-width: 1240px;
+  margin-inline: auto;
+}
+
 .drawer.is-full .drawer__main {
-  flex: 0 0 min(520px, 46%);
+  flex: 0 0 clamp(440px, 36%, 640px);
+}
+
+/* Full screen: the customer form in two columns, in reading order:
+   Name | Postcode, Address 1 | Address 2, Town | Phone, Email | Preferred contact, then the wide ones. */
+.drawer__side .cust__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px 22px;
+}
+
+.drawer__side .cust__pair {
+  display: contents;
+}
+
+.drawer__side .cust__f-picker,
+.drawer__side .cust__chips--heard,
+.drawer__side .cust__f-notes {
+  grid-column: 1 / -1;
 }
 
 .drawer__full {
