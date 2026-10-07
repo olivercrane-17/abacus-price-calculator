@@ -36,3 +36,17 @@ Then open the URL Vite prints (`/api` is proxied to port 8000).
 
 1. Import the GitHub repo into Vercel (Add New → Project). Vercel reads `vercel.json`, so no settings need changing.
 2. Every push to `main` redeploys.
+
+## Send to Pipedrive (optional)
+
+To switch on the **Send to Pipedrive** button, add these in Vercel (Project → Settings → Environment Variables),
+then redeploy:
+
+- `PIPEDRIVE_API_TOKEN`: from Pipedrive → Personal preferences → API.
+- `PIPEDRIVE_COMPANY_DOMAIN`: e.g. `abacus` if your Pipedrive address is abacus.pipedrive.com.
+- `STAFF_PASSCODE`: a long shared passcode that staff enter once per device.
+- `PIPEDRIVE_STAGE_ID` (optional): which stage new deals go into.
+
+Never put these values in the code; the repo is public. To try the flow locally without a real account, run
+`.venv\Scripts\python scripts\dev_fake_pipedrive.py` (passcode `demo-passcode`) alongside `npm run dev`.
+

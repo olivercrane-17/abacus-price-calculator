@@ -232,3 +232,58 @@ sending, no customer database.
   authority district when the area is unparished.
 - **Paid full-address picker:** set the `IDEAL_POSTCODES_API_KEY` environment variable in Vercel. `addresses` then
   lists every address at the postcode, and the form shows an address dropdown. No code change is needed.
+
+## Send to Pipedrive (added 2026-10-07)
+
+A **Send to Pipedrive** button in the basket drawer creates the customer and quote in Pipedrive, so staff don't
+re-key them.
+
+- **What's created:**
+  - A **Person**, matched by exact email, then phone (as typed, then digits only), and reused without overwriting
+    their details. A new person is created only if there's no match.
+  - A **Deal** in GBP, worth the **first-visit value** (the sum of every item total: one of each regular clean plus
+    all one-off work). Its title is "{name}: {item titles}".
+  - A **Note** on the deal holding the CUSTOMER block plus the basket record. Address, heard-via, preferred contact
+    and notes go only in the note, with no Pipedrive custom fields.
+- **Required to send:** at least one priced job (none needing attention), a name, and a phone or email. Copying
+  still works with nothing filled in.
+- **Re-priced on the server:** totals sent by the browser are ignored.
+- **After sending:** a link to the deal, then "Start next customer" (clears the basket and customer). The same
+  basket can't be sent twice by accident.
+- **If the note fails after the deal is created,** the send succeeds with a warning to paste the record in by
+  hand, rather than risking a duplicate deal.
+
+### Protection
+- The button needs a **shared staff passcode**, entered once per device. It sets an HttpOnly, Secure,
+  SameSite=Strict cookie for 30 days, signed with the passcode. Changing the passcode logs every device out.
+- Wrong attempts are slowed by about 1 second. There's no per-IP lockout because there's no database, so use a
+  long passcode.
+- All deals are owned by the Pipedrive user whose API token is configured.
+
+### Settings (Vercel → Project → Settings → Environment Variables; never in the repo, which is public)
+| Variable | Required | Value |
+|---|---|---|
+| `PIPEDRIVE_API_TOKEN` | yes | Pipedrive → Personal preferences → API |
+| `PIPEDRIVE_COMPANY_DOMAIN` | yes | The first part of your Pipedrive address, e.g. `abacus` for abacus.pipedrive.com |
+| `STAFF_PASSCODE` | yes | The shared staff passcode |
+| `PIPEDRIVE_STAGE_ID` | no | A stage id, to put deals somewhere other than the default pipeline's first stage |
+
+Until the three required settings are present, the button is hidden and the site works exactly as before.
+
+### Privacy
+With this button, customer details **do** leave the browser: they pass through our Vercel function, which neither
+stores nor logs them, and are stored in Pipedrive. The privacy notice should list Pipedrive. The API token is sent
+only in the `x-api-token` header.
+
+### API
+- `GET /api/config` includes `"pipedrive": {"enabled": bool}`.
+- `GET /api/session` → `{"unlocked": bool}`.
+- `POST /api/unlock {"passcode"}` → 200, or 401.
+- `POST /api/lock` → clears the cookie.
+- `POST /api/pipedrive/send {"items": [...], "customer": {...}}` → 200 `{deal_id, deal_url, person_id, person_reused,
+  value, warning}`, or 401 (locked), 422 (validation), 502 (a Pipedrive problem, with a staff-friendly message) or
+  404 (not set up).
+
+### Local testing
+`.venv\Scripts\python scripts\dev_fake_pipedrive.py` runs the API with a fake, in-memory Pipedrive (passcode
+`demo-passcode`).
