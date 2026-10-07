@@ -21,7 +21,8 @@ def test_config_is_prices_without_readme():
     body = r.json()
     assert "_readme" not in body
     expected = {k: v for k, v in PRICES.items() if k != "_readme"}
-    assert body == expected
+    assert {k: v for k, v in body.items() if k != "pipedrive"} == expected
+    assert set(body["pipedrive"]) == {"enabled"}
 
 
 def test_quote_windows():

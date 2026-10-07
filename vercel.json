@@ -5,7 +5,8 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.py": {
-      "includeFiles": "{prices.json,pricing/**,lookup/**}"
+      "includeFiles": "{prices.json,pricing/**,lookup/**,integrations/**}",
+      "maxDuration": 30
     }
   },
   "rewrites": [
