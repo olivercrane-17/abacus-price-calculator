@@ -429,6 +429,7 @@ function UnlockForm({
         <TextInput
           label="Staff passcode"
           type="password"
+          revealable
           className="pd-unlock__field"
           value={passcode}
           onChange={(v) => {
