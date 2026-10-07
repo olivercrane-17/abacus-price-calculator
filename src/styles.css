@@ -3810,6 +3810,13 @@ button:disabled {
   padding-right: 48px;
 }
 
+/* Hidden passcode: larger, spaced-out dots that are easy to see and count. Shown text stays normal size. */
+.text-input[type="password"] {
+  font-family: Verdana, "DejaVu Sans", sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.16em;
+}
+
 .reveal-btn {
   position: absolute;
   top: 50%;
