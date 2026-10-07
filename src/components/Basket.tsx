@@ -4,6 +4,8 @@ import type { BasketGroup, QuoteRequest } from "../types";
 import type { PricedItem } from "../basket";
 import { formatPence } from "../format";
 import { usePrefersReducedMotion } from "../hooks";
+import { basketRecord, type CustomerStore } from "../customer";
+import { CustomerDetails } from "./CustomerDetails";
 import { CopyButton } from "./PricePanel";
 
 /* ---------- Helpers ---------- */
@@ -52,14 +54,12 @@ export function flyToBasket(from: HTMLElement, text: string, reduced: boolean) {
   const chip = document.createElement("div");
   chip.className = "fly-chip";
   chip.setAttribute("aria-hidden", "true");
-  chip.innerHTML =
-    '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span></span>';
+  chip.innerHTML = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span></span>';
   chip.querySelector("span")!.textContent = text;
   document.body.appendChild(chip);
   const w = chip.offsetWidth;
   const h = chip.offsetHeight;
-  const at = (x: number, y: number, s: number) =>
-    `translate(${x - w / 2}px, ${y - h / 2}px) scale(${s})`;
+  const at = (x: number, y: number, s: number) => `translate(${x - w / 2}px, ${y - h / 2}px) scale(${s})`;
   const peak = Math.min(y0, y1) - 70;
   const duration = 720;
   landingAt = performance.now() + duration;
@@ -95,32 +95,38 @@ function useLandedCount(count: number): [number, number] {
   return [shown, bumps];
 }
 
-export const BasketButton = forwardRef<HTMLButtonElement, { count: number; open: boolean; onOpen: () => void }>(
-  function BasketButton({ count, open, onOpen }, ref) {
-    const [shown, bumps] = useLandedCount(count);
-    return (
-      <button
-        ref={ref}
-        type="button"
-        className={`basket-btn ${shown > 0 ? "has-items" : ""}`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`Basket, ${count} ${count === 1 ? "item" : "items"}`}
-        data-basket-target="header"
-        onClick={onOpen}
-      >
-        <svg viewBox="0 0 20 20" aria-hidden="true" className="basket-btn__icon">
-          <path d="M3 7.5h14l-1.4 8.2a1.6 1.6 0 0 1-1.6 1.3H6a1.6 1.6 0 0 1-1.6-1.3Z" />
-          <path d="M7 7.5 9 3M13 7.5 11 3" />
-        </svg>
-        <span className="basket-btn__label">Basket</span>
-        <span className="basket-btn__count" key={bumps} data-bump={bumps > 0 ? "" : undefined} aria-hidden="true">
-          {shown}
+export const BasketButton = forwardRef<
+  HTMLButtonElement,
+  { count: number; open: boolean; onOpen: () => void; customer?: string }
+>(function BasketButton({ count, open, onOpen, customer = "" }, ref) {
+  const [shown, bumps] = useLandedCount(count);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={`basket-btn ${shown > 0 ? "has-items" : ""}`}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      aria-label={`Basket, ${count} ${count === 1 ? "item" : "items"}${customer ? `, customer ${customer}` : ""}`}
+      data-basket-target="header"
+      onClick={onOpen}
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true" className="basket-btn__icon">
+        <path d="M3 7.5h14l-1.4 8.2a1.6 1.6 0 0 1-1.6 1.3H6a1.6 1.6 0 0 1-1.6-1.3Z" />
+        <path d="M7 7.5 9 3M13 7.5 11 3" />
+      </svg>
+      <span className="basket-btn__label">Basket</span>
+      {customer && (
+        <span className="basket-btn__who" aria-hidden="true" title={customer}>
+          {customer}
         </span>
-      </button>
-    );
-  },
-);
+      )}
+      <span className="basket-btn__count" key={bumps} data-bump={bumps > 0 ? "" : undefined} aria-hidden="true">
+        {shown}
+      </span>
+    </button>
+  );
+});
 
 /* ---------- Drawer ---------- */
 
@@ -145,6 +151,8 @@ interface DrawerProps {
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
+  customer: CustomerStore;
+  onClearCustomer: () => void;
   toast: ReactNode;
 }
 
@@ -160,13 +168,21 @@ export function BasketDrawer(props: DrawerProps) {
   const [confirmClear, setConfirmClear] = useState(false);
   const clearRef = useRef<HTMLButtonElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
+  // Starts collapsed; remembers whether staff opened it while the page is open.
+  const [custOpen, setCustOpen] = useState(false);
+  const hasCustomer = !props.customer.isEmpty;
+  const record = basketRecord(
+    props.customer.customer,
+    props.summary && !props.stale ? props.summary : null,
+    items.length > 0,
+  );
 
   useEffect(() => {
     if (!open) setConfirmClear(false);
   }, [open]);
   useEffect(() => {
-    if (items.length === 0) setConfirmClear(false);
-  }, [items.length]);
+    if (items.length === 0 && !hasCustomer) setConfirmClear(false);
+  }, [items.length, hasCustomer]);
 
   // Escape closes; Tab stays inside the drawer (and its undo toast).
   useEffect(() => {
@@ -253,7 +269,9 @@ export function BasketDrawer(props: DrawerProps) {
                 </h2>
                 <p className="drawer__meta">
                   {items.length === 0
-                    ? "No jobs yet"
+                    ? hasCustomer
+                      ? "No jobs yet, customer details added"
+                      : "No jobs yet"
                     : `${items.length} ${items.length === 1 ? "job" : "jobs"}${
                         attention ? `, ${attention} ${attention === 1 ? "needs" : "need"} attention` : ""
                       }`}
@@ -290,6 +308,12 @@ export function BasketDrawer(props: DrawerProps) {
             )}
 
             <div className="drawer__body">
+              <CustomerDetails
+                store={props.customer}
+                open={custOpen}
+                onToggle={setCustOpen}
+                onClear={props.onClearCustomer}
+              />
               {items.length === 0 ? (
                 <EmptyBasket onStart={() => onClose()} />
               ) : (
@@ -311,49 +335,57 @@ export function BasketDrawer(props: DrawerProps) {
               )}
             </div>
 
-            {items.length > 0 && (
-              <footer className={`drawer__foot ${props.stale ? "is-stale" : ""}`}>
-                <div className="groups-head">
-                  <h3 className="groups-title">Totals</h3>
-                  {attention > 0 ? (
-                    <span className="groups-note">
-                      Leaves out {attention} {attention === 1 ? "job that needs" : "jobs that need"} attention
-                    </span>
-                  ) : (
-                    priced > 0 &&
-                    props.groups.length > 1 && (
-                      <span className="groups-note">Each frequency is totalled on its own</span>
-                    )
-                  )}
-                </div>
-                {props.groups.length > 0 ? (
-                  <ul className="groups">
-                    {props.groups.map((g) => (
-                      <li key={`${g.basis}-${g.frequency ?? "x"}`} className="group">
-                        <span className="group__label">
-                          {g.label}
-                          <small>
-                            {g.items} {g.items === 1 ? "job" : "jobs"}
-                          </small>
+            {(items.length > 0 || hasCustomer) && (
+              <footer className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""}`}>
+                {items.length > 0 && (
+                  <>
+                    <div className="groups-head">
+                      <h3 className="groups-title">Totals</h3>
+                      {attention > 0 ? (
+                        <span className="groups-note">
+                          Leaves out {attention} {attention === 1 ? "job that needs" : "jobs that need"} attention
                         </span>
-                        <span className="group__total">
-                          <b>{formatPence(g.total)}</b>
-                          {g.basis === "per_visit" && <span>{g.suffix}</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="groups-empty">
-                    {props.loading || !props.hasPriced
-                      ? "Working out the totals…"
-                      : "No priced jobs yet. Fix the jobs marked above to see totals."}
-                  </p>
+                      ) : (
+                        priced > 0 &&
+                        props.groups.length > 1 && (
+                          <span className="groups-note">Each frequency is totalled on its own</span>
+                        )
+                      )}
+                    </div>
+                    {props.groups.length > 0 ? (
+                      <ul className="groups">
+                        {props.groups.map((g) => (
+                          <li key={`${g.basis}-${g.frequency ?? "x"}`} className="group">
+                            <span className="group__label">
+                              {g.label}
+                              <small>
+                                {g.items} {g.items === 1 ? "job" : "jobs"}
+                              </small>
+                            </span>
+                            <span className="group__total">
+                              <b>{formatPence(g.total)}</b>
+                              {g.basis === "per_visit" && <span>{g.suffix}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="groups-empty">
+                        {props.loading || !props.hasPriced
+                          ? "Working out the totals…"
+                          : "No priced jobs yet. Fix the jobs marked above to see totals."}
+                      </p>
+                    )}
+                  </>
                 )}
                 {confirmClear ? (
                   <div className="clear-confirm" role="group" aria-label="Confirm clearing the basket">
                     <span>
-                      Remove all {items.length} {items.length === 1 ? "job" : "jobs"} from the basket?
+                      {items.length === 0
+                        ? "Clear the customer details?"
+                        : `Remove all ${items.length} ${items.length === 1 ? "job" : "jobs"}${
+                            hasCustomer ? " and the customer details" : " from the basket"
+                          }?`}
                     </span>
                     <div className="clear-confirm__btns">
                       <button
@@ -376,14 +408,14 @@ export function BasketDrawer(props: DrawerProps) {
                           window.setTimeout(() => clearRef.current?.focus(), 0);
                         }}
                       >
-                        Keep jobs
+                        {items.length === 0 ? "Keep details" : "Keep jobs"}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="drawer__actions">
                     <CopyButton
-                      text={props.summary && !props.stale ? props.summary : null}
+                      text={record}
                       label="Copy basket for records"
                       textLabel="Basket summary for records"
                       variant="primary"
@@ -436,7 +468,9 @@ function BasketRow({
       layout={reduced ? false : "position"}
       initial={reduced ? false : { opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: 24, transition: { duration: 0.18 } }}
+      exit={
+        reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: 24, transition: { duration: 0.18 } }
+      }
       transition={{ duration: 0.22 }}
     >
       <span className="bitem__num" aria-hidden="true">
@@ -461,7 +495,12 @@ function BasketRow({
           </ul>
         )}
         <div className="bitem__actions">
-          <button type="button" className="bitem__btn bitem__btn--edit" onClick={onEdit} aria-label={`Edit item ${n}, ${title}`}>
+          <button
+            type="button"
+            className="bitem__btn bitem__btn--edit"
+            onClick={onEdit}
+            aria-label={`Edit item ${n}, ${title}`}
+          >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M10.8 2.7l2.5 2.5L6 12.5l-3.2.7.7-3.2Z" />
             </svg>

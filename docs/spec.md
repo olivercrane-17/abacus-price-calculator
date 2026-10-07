@@ -220,7 +220,8 @@ sending, no customer database.
   - **Clear basket** clears the customer as well.
   - The copied customer block is built in the browser. The only customer data sent to our server is the
     **postcode**, for the lookup, and it isn't stored or logged by the app.
-- **Copied record:** a "CUSTOMER" block (only the filled-in fields) followed by the basket summary.
+- **Copied record:** a "CUSTOMER" block (only the filled-in fields) followed by the basket summary. With customer
+  details but no jobs, the record is the block plus "No jobs in basket", so Copy basket works either way.
 
 ### Postcode lookup API
 `GET /api/address?postcode=GU98AB` → `{"postcode", "valid": true|false|null, "town", "county", "addresses": [...],

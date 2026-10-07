@@ -132,3 +132,22 @@ export interface BasketResponse {
   groups: BasketGroup[];
   summary_text: string;
 }
+
+/* ---------- Postcode lookup ---------- */
+
+export interface AddressOption {
+  line1: string;
+  line2: string;
+  town: string;
+  postcode: string;
+}
+
+/** GET /api/address. `valid` is null when the lookup service couldn't be reached. */
+export interface AddressLookup {
+  postcode: string;
+  valid: boolean | null;
+  town: string | null;
+  county: string | null;
+  addresses: AddressOption[];
+  provider: string;
+}

@@ -5,6 +5,7 @@ import { GuttersForm, guttersFields } from "./components/GuttersForm";
 import { Logo } from "./components/Logo";
 import { PricePanel } from "./components/PricePanel";
 import { WindowsForm, WINDOWS_FIELDS } from "./components/WindowsForm";
+import { firstName, useCustomer } from "./customer";
 import { formatPence } from "./format";
 import { useConfig, useMediaQuery, usePrefersReducedMotion, useQuote } from "./hooks";
 import {
@@ -72,6 +73,7 @@ function Calculator({ config }: { config: Config }) {
 
   /* ----- Basket ----- */
   const basket = useBasket();
+  const customer = useCustomer();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; tab: Tab } | null>(null);
   const [removed, setRemoved] = useState<Removed | null>(null);
@@ -195,9 +197,18 @@ function Calculator({ config }: { config: Config }) {
 
   const clearBasket = () => {
     const n = basket.items.length;
+    const hadCustomer = !customer.isEmpty;
     basket.clear();
+    customer.clear();
     setRemoved(null);
-    announce(`Basket cleared. ${n} ${n === 1 ? "item" : "items"} removed.`);
+    if (n === 0) announce("Customer details cleared.");
+    else if (hadCustomer) announce(`Basket and customer details cleared. ${n} ${n === 1 ? "item" : "items"} removed.`);
+    else announce(`Basket cleared. ${n} ${n === 1 ? "item" : "items"} removed.`);
+  };
+
+  const clearCustomer = () => {
+    customer.clear();
+    announce("Customer details cleared.");
   };
 
   return (
@@ -206,7 +217,15 @@ function Calculator({ config }: { config: Config }) {
         tab={tab}
         onTab={setTab}
         onReset={reset}
-        basket={<BasketButton ref={basketBtnRef} count={basket.items.length} open={drawerOpen} onOpen={openDrawer} />}
+        basket={
+          <BasketButton
+            ref={basketBtnRef}
+            count={basket.items.length}
+            open={drawerOpen}
+            onOpen={openDrawer}
+            customer={firstName(customer.customer.name)}
+          />
+        }
       />
       <main className="layout">
         <div
@@ -283,6 +302,8 @@ function Calculator({ config }: { config: Config }) {
         onEdit={editItem}
         onRemove={removeItem}
         onClear={clearBasket}
+        customer={customer}
+        onClearCustomer={clearCustomer}
         toast={<UndoToast removed={removed} onUndo={undoRemove} onDone={dismissToast} />}
       />
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
