@@ -242,7 +242,7 @@ re-key them.
   - A **Person**, matched by exact email, then phone (as typed, then digits only), and reused without overwriting
     their details. A new person is created only if there's no match.
   - A **Deal** in the **"Deal Added" stage of the "Website" pipeline**, in GBP, worth the **first-visit value** (the sum of every item total: one of each regular clean plus
-    all one-off work). Its title is "{name}: {item titles}".
+    all one-off work). Its title is the customer's name; the jobs are listed in the note.
   - A **Note** on the deal holding the CUSTOMER block plus the basket record. Address, heard-via, preferred contact
     and notes go only in the note, with no Pipedrive custom fields.
 - **Required to send:** at least one priced job (none needing attention), a name, and a phone or email. Copying
