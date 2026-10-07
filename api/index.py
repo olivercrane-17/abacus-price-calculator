@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
+from lookup.address import InvalidPostcode, lookup as address_lookup  # noqa: E402
 from pricing import ValidationError, basket, public_config, quote  # noqa: E402
 
 app = FastAPI(title="Abacus price calculator API", docs_url=None, redoc_url=None, openapi_url=None)
@@ -53,3 +54,12 @@ async def post_quote(request: Request):
 @app.post("/api/basket")
 async def post_basket(request: Request):
     return await _handle(request, basket)
+
+
+@app.get("/api/address")
+def get_address(postcode: str = ""):
+    # Only the postcode reaches the server; the customer's other details stay in the browser.
+    try:
+        return address_lookup(postcode)
+    except InvalidPostcode as exc:
+        return _errors([{"field": "postcode", "message": str(exc)}])

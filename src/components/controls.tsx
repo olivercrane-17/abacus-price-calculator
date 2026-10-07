@@ -1,4 +1,12 @@
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 /* ---------- Segmented control (radio group with roving focus) ---------- */
 
@@ -18,6 +26,8 @@ export function Segmented<T extends string>({
   labelHidden = false,
   size = "md",
   describedBy,
+  allowDeselect = false,
+  layout = "fill",
 }: {
   label: string;
   options: SegmentOption<T>[];
@@ -26,6 +36,10 @@ export function Segmented<T extends string>({
   labelHidden?: boolean;
   size?: "md" | "lg";
   describedBy?: string;
+  /** Clicking the selected option again clears the choice (onChange receives ""). Use a T that includes "". */
+  allowDeselect?: boolean;
+  /** "fill": equal-width tray (default). "wrap": separate chips that wrap onto more lines. */
+  layout?: "fill" | "wrap";
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const labelId = useId();
@@ -55,7 +69,7 @@ export function Segmented<T extends string>({
         role="radiogroup"
         aria-labelledby={labelId}
         aria-describedby={describedBy}
-        className={`seg seg--${size}`}
+        className={`seg seg--${size}${layout === "wrap" ? " seg--wrap" : ""}`}
         style={{ ["--n" as string]: options.length }}
       >
         {options.map((o, i) => {
@@ -72,7 +86,7 @@ export function Segmented<T extends string>({
               tabIndex={i === index ? 0 : -1}
               className="seg__opt"
               aria-label={o.aria}
-              onClick={() => onChange(o.value)}
+              onClick={() => onChange(allowDeselect && checked ? ("" as T) : o.value)}
               onKeyDown={(e) => move(e, i)}
             >
               <span className="seg__label">{o.label}</span>
@@ -306,6 +320,16 @@ export function TextInput({
   error,
   placeholder,
   autoFocus,
+  type = "text",
+  inputMode,
+  autoCapitalize,
+  enterKeyHint,
+  spellCheck,
+  maxLength,
+  onBlur,
+  onFocus,
+  note,
+  className = "",
 }: {
   label: string;
   value: string;
@@ -313,37 +337,55 @@ export function TextInput({
   error?: string;
   placeholder?: string;
   autoFocus?: boolean;
+  type?: "text" | "tel" | "email";
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoCapitalize?: string;
+  enterKeyHint?: HTMLAttributes<HTMLInputElement>["enterKeyHint"];
+  spellCheck?: boolean;
+  maxLength?: number;
+  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
+  /** Shown under the field when there's no error (a hint, a soft warning, a suggestion). */
+  note?: ReactNode;
+  /** Extra classes on the field wrapper. */
+  className?: string;
 }) {
   const id = useId();
   const msgId = useId();
   const [touched, setTouched] = useState(false);
   const soft = !!error && !touched && value.trim() === "";
+  const message = error ? <FieldMessage tone={soft ? "needed" : "error"}>{error}</FieldMessage> : note;
   return (
-    <div className={`field field--grow ${error && !soft ? "has-error" : ""} ${soft ? "is-needed" : ""}`}>
+    <div className={`field field--grow ${error && !soft ? "has-error" : ""} ${soft ? "is-needed" : ""} ${className}`}>
       <label htmlFor={id} className="field-label">
         {label}
       </label>
       <input
         id={id}
         className="text-input"
-        type="text"
+        type={type}
+        inputMode={inputMode}
+        autoCapitalize={autoCapitalize}
+        enterKeyHint={enterKeyHint}
+        spellCheck={spellCheck}
+        maxLength={maxLength}
         autoComplete="off"
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}
         aria-invalid={!!error}
-        aria-describedby={error ? msgId : undefined}
-        onBlur={() => setTouched(true)}
+        aria-describedby={message ? msgId : undefined}
+        onFocus={onFocus}
+        onBlur={(e) => {
+          setTouched(true);
+          onBlur?.(e);
+        }}
         onChange={(e) => {
           setTouched(true);
           onChange(e.target.value);
         }}
       />
-      {error && (
-        <div id={msgId}>
-          <FieldMessage tone={soft ? "needed" : "error"}>{error}</FieldMessage>
-        </div>
-      )}
+      {message && <div id={msgId}>{message}</div>}
     </div>
   );
 }

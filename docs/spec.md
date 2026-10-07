@@ -196,3 +196,39 @@ gutter items.
 ```
   An invalid item is returned with its errors and left out of the totals. A malformed body returns 422
   `{"errors": [...]}`.
+
+## Customer details (added 2026-10-07)
+
+Customer contact details can be added to the basket. They exist only to go into **Copy basket for records**: no
+sending, no customer database.
+
+- **Fields (all optional):** name, address line 1, address line 2, town, postcode, phone, email, how they heard of
+  us, preferred contact method, notes.
+  - **How they heard of us:** Google / web search, Facebook / social media, Recommendation, Saw us working / van /
+    flyer, or Other (free text).
+  - **Preferred contact:** Phone call, Text message, Email, WhatsApp.
+- **Placement:** a collapsible "Customer details" section at the top of the basket drawer. The header basket button
+  shows the customer's first name once it's entered.
+- **Frictionless entry:**
+  - The postcode formats as it's typed and is looked up automatically. Town and county fill in, but never over
+    anything staff typed.
+  - Phone numbers are formatted when the field loses focus, and email typos get a one-click fix.
+  - Chips are used instead of free text wherever possible, and Enter moves to the next field.
+- **Privacy:**
+  - The details are kept in **sessionStorage** (`abacus.customer.v1`), so they survive a refresh but are wiped when
+    the tab closes.
+  - **Clear basket** clears the customer as well.
+  - The copied customer block is built in the browser. The only customer data sent to our server is the
+    **postcode**, for the lookup, and it isn't stored or logged by the app.
+- **Copied record:** a "CUSTOMER" block (only the filled-in fields) followed by the basket summary. With customer
+  details but no jobs, the record is the block plus "No jobs in basket", so Copy basket works either way.
+
+### Postcode lookup API
+`GET /api/address?postcode=GU98AB` → `{"postcode", "valid": true|false|null, "town", "county", "addresses": [...],
+"provider"}`.
+- `valid: null` means the lookup service was unreachable, so staff type the address by hand.
+- A malformed postcode returns 422 on the `postcode` field.
+- **Free by default:** postcodes.io, which gives the town and county only. The town is the parish, or the local
+  authority district when the area is unparished.
+- **Paid full-address picker:** set the `IDEAL_POSTCODES_API_KEY` environment variable in Vercel. `addresses` then
+  lists every address at the postcode, and the form shows an address dropdown. No code change is needed.
