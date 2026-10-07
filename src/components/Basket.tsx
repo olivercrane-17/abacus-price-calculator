@@ -373,7 +373,8 @@ export function BasketDrawer(props: DrawerProps) {
               )}
             </div>
 
-            {(items.length > 0 || hasCustomer) && (
+            {/* An unlocked device keeps the footer, so "Forget this device" is reachable with an empty basket. */}
+            {(items.length > 0 || hasCustomer || pd?.store.session === "unlocked") && (
               <footer
                 className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""} ${pd ? "has-pd" : ""}`}
               >
@@ -468,6 +469,7 @@ export function BasketDrawer(props: DrawerProps) {
                     </div>
                   </div>
                 ) : (
+                  (items.length > 0 || hasCustomer) && (
                   <div className="drawer__actions">
                     <CopyButton
                       text={record}
@@ -491,6 +493,7 @@ export function BasketDrawer(props: DrawerProps) {
                       </button>
                     )}
                   </div>
+                  )
                 )}
               </footer>
             )}
