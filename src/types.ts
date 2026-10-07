@@ -32,6 +32,8 @@ export interface Config {
   };
   warnings: Record<string, string>;
   contact: { phone: string; mobile: string; sales_mobile: string };
+  /** Missing from older APIs: treat as switched off. */
+  pipedrive?: { enabled: boolean };
 }
 
 export type PropertyRequest =
@@ -150,4 +152,24 @@ export interface AddressLookup {
   county: string | null;
   addresses: AddressOption[];
   provider: string;
+}
+
+/* ---------- Pipedrive ---------- */
+
+/** GET /api/session. The passcode cookie is HttpOnly, so only the server can say. */
+export interface SessionResponse {
+  unlocked: boolean;
+}
+
+/** POST /api/pipedrive/send → 200. */
+export interface PipedriveSendResult {
+  deal_id: number;
+  deal_url: string;
+  person_id: number;
+  /** True when an existing Pipedrive person (matched by email, then phone) was used. */
+  person_reused: boolean;
+  /** Deal value in pence: the first-visit value (sum of every item total). */
+  value: number;
+  /** Set when the deal was made but something after it (the note) failed. */
+  warning: string | null;
 }

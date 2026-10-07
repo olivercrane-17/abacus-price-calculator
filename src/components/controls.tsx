@@ -337,7 +337,7 @@ export function TextInput({
   error?: string;
   placeholder?: string;
   autoFocus?: boolean;
-  type?: "text" | "tel" | "email";
+  type?: "text" | "tel" | "email" | "password";
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   autoCapitalize?: string;
   enterKeyHint?: HTMLAttributes<HTMLInputElement>["enterKeyHint"];
