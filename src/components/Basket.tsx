@@ -3,7 +3,7 @@ import { forwardRef, useEffect, useId, useMemo, useRef, useState, type ReactNode
 import type { BasketGroup, QuoteRequest } from "../types";
 import type { PricedItem } from "../basket";
 import { formatPence } from "../format";
-import { usePrefersReducedMotion } from "../hooks";
+import { useMediaQuery, usePrefersReducedMotion } from "../hooks";
 import { basketRecord, type CustomerStore } from "../customer";
 import { customerErrorField, sendCheck, sendFingerprint, type CustomerField, type PipedriveStore } from "../pipedrive";
 import { CustomerDetails, type CustomerErrors } from "./CustomerDetails";
@@ -160,6 +160,27 @@ interface DrawerProps {
   pipedrive: { store: PipedriveStore; onStartNext: () => void } | null;
 }
 
+/* Basket layout preferences, remembered per computer. A convenience only, so storage failures are ignored. */
+const FULL_KEY = "abacus.basket.full.v1";
+const MIN_KEY = "abacus.basket.footmin.v1";
+
+function loadFlag(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveFlag(key: string, on: boolean) {
+  try {
+    if (on) window.localStorage.setItem(key, "1");
+    else window.localStorage.removeItem(key);
+  } catch {
+    /* Storage blocked: it just won't be remembered. */
+  }
+}
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea, input:not([disabled]), select, [tabindex]:not([tabindex="-1"])';
 
@@ -174,6 +195,23 @@ export function BasketDrawer(props: DrawerProps) {
   const keepRef = useRef<HTMLButtonElement>(null);
   // Starts collapsed; remembers whether staff opened it while the page is open.
   const [custOpen, setCustOpen] = useState(false);
+  // Full screen puts the customer details beside the jobs. Only on screens wide enough for two columns.
+  const [full, setFull] = useState(() => loadFlag(FULL_KEY));
+  const wide = useMediaQuery("(min-width: 900px)");
+  const isFull = full && wide;
+  const toggleFull = () => {
+    setFull(!full);
+    saveFlag(FULL_KEY, !full);
+  };
+  // In the side panel, the blue footer can be shrunk to just the totals (drag or click its handle).
+  const [footMin, setFootMin] = useState(() => loadFlag(MIN_KEY));
+  const isMin = footMin && !isFull;
+  const setMin = (on: boolean) => {
+    setFootMin(on);
+    saveFlag(MIN_KEY, on);
+  };
+  // Set when staff try to send with details missing: the missing fields are marked until they're filled in.
+  const [showMissing, setShowMissing] = useState(false);
   const hasCustomer = !props.customer.isEmpty;
   const record = basketRecord(
     props.customer.customer,
@@ -199,8 +237,17 @@ export function BasketDrawer(props: DrawerProps) {
       if (f && !custErrors[f]) custErrors[f] = e.message;
     }
   }
-  /** Open Customer details and put the cursor in the field that's missing. */
+  // Details staff tried to send without, marked on the fields until they're filled in.
+  if (showMissing && pd) {
+    if (!cust.name.trim()) custErrors.name ??= "Add the customer's name";
+    if (!cust.phone.trim() && !cust.email.trim()) custErrors.phone ??= "Add a phone number or email";
+  }
+  useEffect(() => {
+    if (!check.field) setShowMissing(false);
+  }, [check.field]);
+  /** Open Customer details, mark what's missing and put the cursor in the first missing field. */
   const addDetails = (field: CustomerField) => {
+    setShowMissing(true);
     setCustOpen(true);
     window.setTimeout(() => {
       const input = layerRef.current?.querySelector<HTMLInputElement>(`.cust__f-${field} input`);
@@ -269,6 +316,18 @@ export function BasketDrawer(props: DrawerProps) {
   const priced = items.filter((p) => p.result?.ok).length;
   const attention = items.filter((p) => p.result && !p.result.ok).length;
 
+  const customerSection = (
+    <CustomerDetails
+      store={props.customer}
+      open={isFull || custOpen}
+      alwaysOpen={isFull}
+      onToggle={setCustOpen}
+      onClear={props.onClearCustomer}
+      errors={pd ? custErrors : undefined}
+      sendsToPipedrive={!!pd}
+    />
+  );
+
   return (
     <div className="basket-layer" ref={layerRef}>
       <AnimatePresence>
@@ -288,7 +347,7 @@ export function BasketDrawer(props: DrawerProps) {
           <motion.div
             key="drawer"
             ref={dialogRef}
-            className="drawer"
+            className={`drawer ${isFull ? "is-full" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
@@ -317,6 +376,26 @@ export function BasketDrawer(props: DrawerProps) {
                 <span className="pulse" />
                 Updating
               </span>
+              {wide && (
+                <button
+                  type="button"
+                  className="drawer__full"
+                  aria-pressed={isFull}
+                  aria-label={isFull ? "Exit full screen" : "Full screen basket"}
+                  title={isFull ? "Exit full screen" : "Full screen"}
+                  onClick={toggleFull}
+                >
+                  {isFull ? (
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M6.5 2.5v4h-4M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 13.5v-4h4" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M2.5 6.5v-4h4M13.5 6.5v-4h-4M2.5 9.5v4h4M13.5 9.5v4h-4" />
+                    </svg>
+                  )}
+                </button>
+              )}
               <button type="button" className="drawer__close" aria-label="Close basket" onClick={() => onClose()}>
                 <svg viewBox="0 0 16 16" aria-hidden="true">
                   <path d="M4 4l8 8M12 4l-8 8" />
@@ -343,15 +422,11 @@ export function BasketDrawer(props: DrawerProps) {
               </div>
             )}
 
+            <div className="drawer__cols">
+              {isFull && <div className="drawer__side">{customerSection}</div>}
+              <div className="drawer__main">
             <div className="drawer__body">
-              <CustomerDetails
-                store={props.customer}
-                open={custOpen}
-                onToggle={setCustOpen}
-                onClear={props.onClearCustomer}
-                errors={pd ? custErrors : undefined}
-                sendsToPipedrive={!!pd}
-              />
+              {!isFull && customerSection}
               {items.length === 0 ? (
                 <EmptyBasket onStart={() => onClose()} />
               ) : (
@@ -376,8 +451,15 @@ export function BasketDrawer(props: DrawerProps) {
             {/* An unlocked device keeps the footer, so "Forget this device" is reachable with an empty basket. */}
             {(items.length > 0 || hasCustomer || pd?.store.session === "unlocked") && (
               <footer
-                className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""} ${pd ? "has-pd" : ""}`}
+                className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""} ${pd ? "has-pd" : ""} ${
+                  isMin ? "is-min" : ""
+                } ${isFull ? "" : "has-grip"}`}
               >
+                {!isFull && <FootGrip collapsed={isMin} onChange={setMin} />}
+                {isMin ? (
+                  <MiniTotals groups={props.groups} stale={props.stale} hasJobs={items.length > 0} onExpand={() => setMin(false)} />
+                ) : (
+                <>
                 {items.length > 0 && (
                   <>
                     <div className="groups-head">
@@ -495,8 +577,12 @@ export function BasketDrawer(props: DrawerProps) {
                   </div>
                   )
                 )}
+                </>
+                )}
               </footer>
             )}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -679,5 +765,82 @@ export function UndoToast({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/* ---------- Footer handle and shrunk totals (side panel) ---------- */
+
+/** Drag down (or click) to shrink the blue footer to just the totals; drag up (or click) to bring it back. */
+function FootGrip({ collapsed, onChange }: { collapsed: boolean; onChange: (collapsed: boolean) => void }) {
+  const startY = useRef<number | null>(null);
+  const dragged = useRef(false);
+  return (
+    <button
+      type="button"
+      className="foot-grip"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? "Show the totals and buttons" : "Shrink to just the totals"}
+      title={collapsed ? "Drag up or click to show the buttons" : "Drag down or click to shrink"}
+      onPointerDown={(e) => {
+        startY.current = e.clientY;
+        dragged.current = false;
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (startY.current !== null && Math.abs(e.clientY - startY.current) > 6) dragged.current = true;
+      }}
+      onPointerUp={(e) => {
+        const from = startY.current;
+        startY.current = null;
+        if (from === null || !dragged.current) return;
+        const dy = e.clientY - from;
+        if (dy > 20) onChange(true);
+        else if (dy < -20) onChange(false);
+      }}
+      onPointerCancel={() => {
+        startY.current = null;
+      }}
+      onClick={() => {
+        // A drag already decided; a plain click (or Enter/Space) toggles.
+        if (dragged.current) {
+          dragged.current = false;
+          return;
+        }
+        onChange(!collapsed);
+      }}
+    >
+      <span className="foot-grip__bar" aria-hidden="true" />
+    </button>
+  );
+}
+
+/** One line of totals, e.g. "£27.00 every 4 weeks · £200.00 one-off". Clicking it opens the footer again. */
+function MiniTotals({
+  groups,
+  stale,
+  hasJobs,
+  onExpand,
+}: {
+  groups: BasketGroup[];
+  stale: boolean;
+  hasJobs: boolean;
+  onExpand: () => void;
+}) {
+  return (
+    <button type="button" className={`mini-totals ${stale ? "is-stale" : ""}`} onClick={onExpand}>
+      <span className="mini-totals__label">Total</span>
+      <span className="mini-totals__list">
+        {groups.length === 0 ? (
+          <span className="mini-totals__none">{hasJobs ? "Working out the totals…" : "No jobs yet"}</span>
+        ) : (
+          groups.map((g) => (
+            <span key={`${g.basis}-${g.frequency ?? "x"}`} className="mini-totals__item">
+              <b>{formatPence(g.total)}</b>
+              <span>{g.basis === "per_visit" ? g.label.toLowerCase() : "one-off"}</span>
+            </span>
+          ))
+        )}
+      </span>
+    </button>
   );
 }

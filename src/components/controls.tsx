@@ -330,6 +330,7 @@ export function TextInput({
   onFocus,
   note,
   className = "",
+  revealable = false,
 }: {
   label: string;
   value: string;
@@ -349,10 +350,14 @@ export function TextInput({
   note?: ReactNode;
   /** Extra classes on the field wrapper. */
   className?: string;
+  /** Password fields only: an eye button to show what's been typed, to check it before submitting. */
+  revealable?: boolean;
 }) {
   const id = useId();
   const msgId = useId();
   const [touched, setTouched] = useState(false);
+  const [shown, setShown] = useState(false);
+  const canReveal = revealable && type === "password";
   const soft = !!error && !touched && value.trim() === "";
   const message = error ? <FieldMessage tone={soft ? "needed" : "error"}>{error}</FieldMessage> : note;
   return (
@@ -360,10 +365,11 @@ export function TextInput({
       <label htmlFor={id} className="field-label">
         {label}
       </label>
+      <div className={canReveal ? "text-input-wrap" : "text-input-plain"}>
       <input
         id={id}
         className="text-input"
-        type={type}
+        type={canReveal && shown ? "text" : type}
         inputMode={inputMode}
         autoCapitalize={autoCapitalize}
         enterKeyHint={enterKeyHint}
@@ -385,6 +391,31 @@ export function TextInput({
           onChange(e.target.value);
         }}
       />
+      {canReveal && (
+        <button
+          type="button"
+          className="reveal-btn"
+          aria-controls={id}
+          aria-pressed={shown}
+          aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          title={shown ? "Hide" : "Show what you've typed"}
+          onClick={() => setShown(!shown)}
+        >
+          {shown ? (
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5z" />
+              <circle cx="10" cy="10" r="2.4" />
+              <path d="M3.5 3.5l13 13" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5z" />
+              <circle cx="10" cy="10" r="2.4" />
+            </svg>
+          )}
+        </button>
+      )}
+      </div>
       {message && <div id={msgId}>{message}</div>}
     </div>
   );
