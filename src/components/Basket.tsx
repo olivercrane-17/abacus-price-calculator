@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { BasketGroup, QuoteRequest } from "../types";
 import type { PricedItem } from "../basket";
 import { formatPence } from "../format";
 import { usePrefersReducedMotion } from "../hooks";
 import { basketRecord, type CustomerStore } from "../customer";
-import { CustomerDetails } from "./CustomerDetails";
+import { customerErrorField, sendCheck, sendFingerprint, type CustomerField, type PipedriveStore } from "../pipedrive";
+import { CustomerDetails, type CustomerErrors } from "./CustomerDetails";
+import { PipedriveSend } from "./PipedriveSend";
 import { CopyButton } from "./PricePanel";
 
 /* ---------- Helpers ---------- */
@@ -154,6 +156,8 @@ interface DrawerProps {
   customer: CustomerStore;
   onClearCustomer: () => void;
   toast: ReactNode;
+  /** Send to Pipedrive, or null when it isn't set up (nothing about it is shown). */
+  pipedrive: { store: PipedriveStore; onStartNext: () => void } | null;
 }
 
 const FOCUSABLE =
@@ -177,12 +181,44 @@ export function BasketDrawer(props: DrawerProps) {
     items.length > 0,
   );
 
+  /* Send to Pipedrive */
+  const pd = props.pipedrive;
+  const cust = props.customer.customer;
+  const requests = useMemo(() => items.map((p) => p.item.request), [items]);
+  const pdOn = !!pd;
+  const fingerprint = useMemo(() => (pdOn ? sendFingerprint(requests, cust) : ""), [pdOn, requests, cust]);
+  const check = sendCheck({ items, stale: props.stale, failed: props.failed }, cust);
+  const pdState = pd?.store.state;
+  const pdSending = pdState?.status === "sending";
+  const sentHere = !!pd && !pdSending && pd.store.sent?.fingerprint === fingerprint;
+  // Server checks on the customer (422), shown on the fields until the details change.
+  const custErrors: CustomerErrors = {};
+  if (pdState?.status === "invalid" && pdState.fingerprint === fingerprint) {
+    for (const e of pdState.errors) {
+      const f = customerErrorField(e.field);
+      if (f && !custErrors[f]) custErrors[f] = e.message;
+    }
+  }
+  /** Open Customer details and put the cursor in the field that's missing. */
+  const addDetails = (field: CustomerField) => {
+    setCustOpen(true);
+    window.setTimeout(() => {
+      const input = layerRef.current?.querySelector<HTMLInputElement>(`.cust__f-${field} input`);
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    }, 60);
+  };
+
   useEffect(() => {
     if (!open) setConfirmClear(false);
   }, [open]);
   useEffect(() => {
     if (items.length === 0 && !hasCustomer) setConfirmClear(false);
   }, [items.length, hasCustomer]);
+  // No clearing while a send is on its way to Pipedrive.
+  useEffect(() => {
+    if (pdSending) setConfirmClear(false);
+  }, [pdSending]);
 
   // Escape closes; Tab stays inside the drawer (and its undo toast).
   useEffect(() => {
@@ -313,6 +349,8 @@ export function BasketDrawer(props: DrawerProps) {
                 open={custOpen}
                 onToggle={setCustOpen}
                 onClear={props.onClearCustomer}
+                errors={pd ? custErrors : undefined}
+                sendsToPipedrive={!!pd}
               />
               {items.length === 0 ? (
                 <EmptyBasket onStart={() => onClose()} />
@@ -335,8 +373,11 @@ export function BasketDrawer(props: DrawerProps) {
               )}
             </div>
 
-            {(items.length > 0 || hasCustomer) && (
-              <footer className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""}`}>
+            {/* An unlocked device keeps the footer, so "Forget this device" is reachable with an empty basket. */}
+            {(items.length > 0 || hasCustomer || pd?.store.session === "unlocked") && (
+              <footer
+                className={`drawer__foot ${props.stale && items.length > 0 ? "is-stale" : ""} ${pd ? "has-pd" : ""}`}
+              >
                 {items.length > 0 && (
                   <>
                     <div className="groups-head">
@@ -378,6 +419,21 @@ export function BasketDrawer(props: DrawerProps) {
                     )}
                   </>
                 )}
+                {pd && (
+                  <PipedriveSend
+                    store={pd.store}
+                    requests={requests}
+                    customer={cust}
+                    check={check}
+                    fingerprint={fingerprint}
+                    onAddDetails={addDetails}
+                    onStartNext={() => {
+                      setConfirmClear(false);
+                      pd.onStartNext();
+                      dialogRef.current?.focus();
+                    }}
+                  />
+                )}
                 {confirmClear ? (
                   <div className="clear-confirm" role="group" aria-label="Confirm clearing the basket">
                     <span>
@@ -413,25 +469,31 @@ export function BasketDrawer(props: DrawerProps) {
                     </div>
                   </div>
                 ) : (
+                  (items.length > 0 || hasCustomer) && (
                   <div className="drawer__actions">
                     <CopyButton
                       text={record}
                       label="Copy basket for records"
                       textLabel="Basket summary for records"
-                      variant="primary"
+                      variant={pd ? "secondary" : "primary"}
                     />
-                    <button
-                      type="button"
-                      className="btn btn--ghost-on-blue drawer__clear"
-                      ref={clearRef}
-                      onClick={() => {
-                        setConfirmClear(true);
-                        window.setTimeout(() => keepRef.current?.focus(), 0);
-                      }}
-                    >
-                      Clear basket
-                    </button>
+                    {/* Once sent, "Start next customer" does the clearing; nothing is cleared mid-send. */}
+                    {!sentHere && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost-on-blue drawer__clear"
+                        ref={clearRef}
+                        disabled={pdSending}
+                        onClick={() => {
+                          setConfirmClear(true);
+                          window.setTimeout(() => keepRef.current?.focus(), 0);
+                        }}
+                      >
+                        Clear basket
+                      </button>
+                    )}
                   </div>
+                  )
                 )}
               </footer>
             )}

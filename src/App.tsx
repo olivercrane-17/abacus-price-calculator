@@ -8,6 +8,7 @@ import { WindowsForm, WINDOWS_FIELDS } from "./components/WindowsForm";
 import { firstName, useCustomer } from "./customer";
 import { formatPence } from "./format";
 import { useConfig, useMediaQuery, usePrefersReducedMotion, useQuote } from "./hooks";
+import { usePipedrive } from "./pipedrive";
 import {
   errorFor,
   guttersRequest,
@@ -74,6 +75,7 @@ function Calculator({ config }: { config: Config }) {
   /* ----- Basket ----- */
   const basket = useBasket();
   const customer = useCustomer();
+  const pipedrive = usePipedrive(config.pipedrive?.enabled === true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; tab: Tab } | null>(null);
   const [removed, setRemoved] = useState<Removed | null>(null);
@@ -195,11 +197,19 @@ function Calculator({ config }: { config: Config }) {
 
   const dismissToast = useCallback(() => setRemoved(null), []);
 
+  // Nothing left to send: forget the last send, so a new customer never shows "Already sent".
+  const resetPipedrive = pipedrive.reset;
+  const nothingToSend = basket.items.length === 0 && customer.isEmpty;
+  useEffect(() => {
+    if (nothingToSend) resetPipedrive();
+  }, [nothingToSend, resetPipedrive]);
+
   const clearBasket = () => {
     const n = basket.items.length;
     const hadCustomer = !customer.isEmpty;
     basket.clear();
     customer.clear();
+    pipedrive.reset();
     setRemoved(null);
     if (n === 0) announce("Customer details cleared.");
     else if (hadCustomer) announce(`Basket and customer details cleared. ${n} ${n === 1 ? "item" : "items"} removed.`);
@@ -209,6 +219,12 @@ function Calculator({ config }: { config: Config }) {
   const clearCustomer = () => {
     customer.clear();
     announce("Customer details cleared.");
+  };
+
+  /** After sending to Pipedrive: the same clear as "Clear basket", without the confirm step. */
+  const startNextCustomer = () => {
+    clearBasket();
+    announce("Ready for the next customer. The basket and customer details are cleared.");
   };
 
   return (
@@ -305,6 +321,7 @@ function Calculator({ config }: { config: Config }) {
         customer={customer}
         onClearCustomer={clearCustomer}
         toast={<UndoToast removed={removed} onUndo={undoRemove} onDone={dismissToast} />}
+        pipedrive={pipedrive.enabled ? { store: pipedrive, onStartNext: startNextCustomer } : null}
       />
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}

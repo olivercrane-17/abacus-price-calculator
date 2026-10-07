@@ -44,16 +44,24 @@ const initials = (name: string) =>
     .map((w) => w.charAt(0).toUpperCase())
     .join("");
 
+/** Errors the server sent back for the customer (from Send to Pipedrive). */
+export type CustomerErrors = Partial<Record<"name" | "phone", string>>;
+
 export function CustomerDetails({
   store,
   open,
   onToggle,
   onClear,
+  errors,
+  sendsToPipedrive = false,
 }: {
   store: CustomerStore;
   open: boolean;
   onToggle: (open: boolean) => void;
   onClear: () => void;
+  errors?: CustomerErrors;
+  /** Send to Pipedrive is switched on, so the privacy note says the details can leave this tab. */
+  sendsToPipedrive?: boolean;
 }) {
   const { customer: c, set, isEmpty } = store;
   const bodyId = useId();
@@ -93,14 +101,16 @@ export function CustomerDetails({
       </h3>
       <Reveal show={open}>
         <div className="cust__body" id={bodyId} onKeyDown={enterMovesOn} ref={bodyRef}>
-          <CustomerFields c={c} set={set} />
+          <CustomerFields c={c} set={set} errors={errors} />
           <div className="cust__foot">
             <p className="cust__privacy">
               <svg viewBox="0 0 16 16" aria-hidden="true">
                 <rect x="3.5" y="7" width="9" height="6.5" rx="1.3" />
                 <path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7" />
               </svg>
-              Kept in this tab only, and cleared when it closes.
+              {sendsToPipedrive
+                ? "Kept in this tab only, and cleared when it closes, unless you send it to Pipedrive."
+                : "Kept in this tab only, and cleared when it closes."}
             </p>
             {!isEmpty && (
               <button
@@ -121,7 +131,15 @@ export function CustomerDetails({
   );
 }
 
-function CustomerFields({ c, set }: { c: Customer; set: (p: Partial<Customer>) => void }) {
+function CustomerFields({
+  c,
+  set,
+  errors,
+}: {
+  c: Customer;
+  set: (p: Partial<Customer>) => void;
+  errors?: CustomerErrors;
+}) {
   const [pcBlurred, setPcBlurred] = useState(false);
   const [phoneBlurred, setPhoneBlurred] = useState(false);
   const [emailBlurred, setEmailBlurred] = useState(false);
@@ -164,6 +182,8 @@ function CustomerFields({ c, set }: { c: Customer; set: (p: Partial<Customer>) =
     <div className="cust__fields">
       <TextInput
         label="Name"
+        className="cust__f-name"
+        error={errors?.name}
         value={c.name}
         onChange={(v) => set({ name: capitaliseWords(v) })}
         autoCapitalize="words"
@@ -239,6 +259,8 @@ function CustomerFields({ c, set }: { c: Customer; set: (p: Partial<Customer>) =
       <div className="cust__pair">
         <TextInput
           label="Phone"
+          className="cust__f-phone"
+          error={errors?.phone}
           type="tel"
           inputMode="tel"
           value={c.phone}
@@ -261,6 +283,7 @@ function CustomerFields({ c, set }: { c: Customer; set: (p: Partial<Customer>) =
         />
         <TextInput
           label="Email"
+          className="cust__f-email"
           type="email"
           inputMode="email"
           value={c.email}

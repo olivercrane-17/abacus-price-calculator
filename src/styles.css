@@ -3392,6 +3392,390 @@ button:disabled {
   }
 }
 
+/* ==========================================================================
+   Send to Pipedrive (basket drawer footer)
+   ========================================================================== */
+
+.pd {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pd .link-btn {
+  margin: 0;
+}
+
+.pd .pd-link {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pd .pd-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.pd .btn--on-blue:hover {
+  background: var(--royal-tint);
+}
+
+/* With Send to Pipedrive leading, Copy steps back to an outline and Clear matches its height. */
+.drawer__foot.has-pd .drawer__clear {
+  height: 46px;
+}
+
+.drawer__clear:disabled {
+  opacity: 0.5;
+}
+
+.drawer__clear:disabled:hover {
+  background: transparent;
+}
+
+/* Disabled with a reason: still focusable (aria-disabled), so the reason can be read out. */
+.pd-btn[aria-disabled="true"],
+.pd-btn[aria-disabled="true"]:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--on-blue-3);
+  cursor: not-allowed;
+}
+
+.pd-btn.is-sending[aria-disabled="true"] {
+  background: #fff;
+  color: var(--royal);
+  cursor: progress;
+}
+
+.pd-spin {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  animation: pd-spin 0.75s linear infinite;
+}
+
+@keyframes pd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* What's missing: an amber bead, like the one that marks attention elsewhere. */
+.pd-reason {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--on-blue-2);
+}
+
+.pd-reason__bead {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: inset 0 -2px 0 rgba(77, 50, 0, 0.2);
+}
+
+.pd-again {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--on-blue-2);
+}
+
+.pd-again svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Unlock on this device */
+
+.pd-unlock {
+  padding: 14px 16px 12px;
+  border-radius: var(--r-md);
+  background: var(--royal-900);
+  animation: fade-in 0.18s var(--ease);
+}
+
+.pd-unlock__title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.15;
+}
+
+.pd-unlock__title .btn__icon {
+  color: var(--amber);
+}
+
+.pd-unlock__hint {
+  margin: 5px 0 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--on-blue-2);
+}
+
+.pd-unlock__warn {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.pd-unlock__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pd-unlock .field--grow {
+  flex: 1 1 0;
+}
+
+.pd-unlock .field-label {
+  color: var(--on-blue-2);
+}
+
+.pd-unlock .text-input:focus-visible {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(159, 220, 255, 0.55);
+}
+
+.pd-unlock .has-error .text-input {
+  border-color: var(--error-on-blue);
+  background: #fff4f2;
+}
+
+.pd-unlock .field-msg--error,
+.pd-unlock__problem {
+  color: var(--error-on-blue);
+}
+
+.pd-unlock .field-msg--needed {
+  color: var(--on-blue-2);
+}
+
+/* Lines up with the input, below the field label. */
+.pd-unlock__go {
+  flex: none;
+  min-width: 108px;
+  height: 46px;
+  margin-top: 26px;
+  padding: 0 18px;
+}
+
+.pd-unlock__go[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.pd-unlock__problem {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pd .pd-unlock__cancel {
+  margin-top: 10px;
+}
+
+/* Unlocked: the device line and Forget this device */
+
+.pd-device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13.5px;
+  color: var(--on-blue-3);
+}
+
+.pd-device__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pd-device__state svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pd .pd-device .pd-link {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--on-blue-2);
+}
+
+.pd .pd-device .pd-link:hover {
+  color: #fff;
+}
+
+.pd-device__error {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--error-on-blue);
+}
+
+/* Problems */
+
+.pd-problems {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: rgba(255, 194, 187, 0.12);
+  border: 1px solid rgba(255, 194, 187, 0.4);
+  color: var(--error-on-blue);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pd-problems p {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.pd-problems ul {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.pd-fail {
+  box-shadow: inset 4px 0 0 var(--error-on-blue);
+  padding-left: 18px;
+}
+
+/* Sent: a mint bead slides home on the rod. */
+
+.pd-done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pd-done__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--royal-900);
+}
+
+.pd-done__bead {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #053321;
+  box-shadow: inset 0 -3px 0 rgba(5, 51, 33, 0.16);
+  animation: pd-bead 0.52s var(--ease);
+}
+
+.pd-done__bead svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes pd-bead {
+  from {
+    opacity: 0;
+    transform: translateX(-16px) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(2px) scale(1.06);
+  }
+}
+
+.pd-done__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-done__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.pd-done__meta {
+  margin: 3px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--on-blue-2);
+}
+
+.pd-nowrap {
+  white-space: nowrap;
+}
+
+.pd-done__open {
+  flex: none;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.pd-ext {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 640px) {
+  /* No room for Open deal beside the text: it drops below, in line with the text. */
+  .pd-done__row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .pd-done__text {
+    flex-basis: calc(100% - 48px);
+  }
+  .pd-done__open {
+    margin-left: 48px;
+  }
+  .pd-unlock {
+    padding: 12px 14px 10px;
+  }
+}
+
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {

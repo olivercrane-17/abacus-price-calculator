@@ -1,6 +1,6 @@
 // Customer contact details for the basket record.
 // Kept only in this browser tab (sessionStorage) and in the copied text: nothing here is sent to our server,
-// apart from the postcode for the lookup.
+// apart from the postcode for the lookup, unless staff press "Send to Pipedrive" (src/pipedrive.ts).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { lookupAddress, ValidationError } from "./api";
