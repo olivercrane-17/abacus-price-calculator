@@ -44,6 +44,8 @@ export function PipedriveSend({ store, requests, customer, check, fingerprint, o
   const [expired, setExpired] = useState(false);
   const [confirmAgain, setConfirmAgain] = useState(false);
   const [forgetting, setForgetting] = useState(false);
+  // Bumped when Send is pressed while blocked for a reason that isn't a missing detail (e.g. no jobs).
+  const [nudge, setNudge] = useState(0);
   const [forgetError, setForgetError] = useState("");
   const [said, setSaid] = useState("");
   const sayTimer = useRef(0);
@@ -139,7 +141,7 @@ export function PipedriveSend({ store, requests, customer, check, fingerprint, o
   };
 
   const reason = !check.ok && !invalid && (
-    <p className="pd-reason" id={reasonId}>
+    <p key={nudge} className={`pd-reason ${nudge ? "is-nudged" : ""}`} id={reasonId}>
       <span className="pd-reason__bead" aria-hidden="true" />
       <span>
         {check.reason}
@@ -247,7 +249,13 @@ export function PipedriveSend({ store, requests, customer, check, fingerprint, o
                 aria-disabled={blocked || sending ? true : undefined}
                 aria-describedby={reason ? reasonId : undefined}
                 onClick={() => {
-                  if (blocked || sending) return;
+                  if (sending) return;
+                  if (blocked) {
+                    // Don't just do nothing: take staff to what's missing, or draw their eye to the reason.
+                    if (check.field) onAddDetails(check.field);
+                    else setNudge((n) => n + 1);
+                    return;
+                  }
                   if (sentBefore) {
                     setConfirmAgain(true);
                     focusSoon(keepRef);

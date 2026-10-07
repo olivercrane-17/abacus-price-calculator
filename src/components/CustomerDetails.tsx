@@ -54,9 +54,12 @@ export function CustomerDetails({
   onClear,
   errors,
   sendsToPipedrive = false,
+  alwaysOpen = false,
 }: {
   store: CustomerStore;
   open: boolean;
+  /** Full-screen basket: the section can't be collapsed, so the heading isn't a toggle. */
+  alwaysOpen?: boolean;
   onToggle: (open: boolean) => void;
   onClear: () => void;
   errors?: CustomerErrors;
@@ -73,13 +76,7 @@ export function CustomerDetails({
   return (
     <section className={`cust ${open ? "is-open" : ""} ${isEmpty ? "" : "has-details"}`} aria-labelledby={headId}>
       <h3 className="cust__heading" id={headId}>
-        <button
-          type="button"
-          className="cust__toggle"
-          aria-expanded={open}
-          aria-controls={open ? bodyId : undefined}
-          onClick={() => onToggle(!open)}
-        >
+        <Toggle alwaysOpen={alwaysOpen} open={open} bodyId={bodyId} onToggle={onToggle}>
           <span className="cust__bead" aria-hidden="true">
             {ini || (
               <svg viewBox="0 0 20 20">
@@ -94,10 +91,12 @@ export function CustomerDetails({
               {summary || (isEmpty ? "Optional. Added to the copied record." : "Details added")}
             </span>
           </span>
-          <svg className="cust__chev" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M4 6l4 4 4-4" />
-          </svg>
-        </button>
+          {!alwaysOpen && (
+            <svg className="cust__chev" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          )}
+        </Toggle>
       </h3>
       <Reveal show={open}>
         <div className="cust__body" id={bodyId} onKeyDown={enterMovesOn} ref={bodyRef}>
@@ -128,6 +127,34 @@ export function CustomerDetails({
         </div>
       </Reveal>
     </section>
+  );
+}
+
+/** The section heading: a collapse toggle, or plain when the section always stays open. */
+function Toggle({
+  alwaysOpen,
+  open,
+  bodyId,
+  onToggle,
+  children,
+}: {
+  alwaysOpen: boolean;
+  open: boolean;
+  bodyId: string;
+  onToggle: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  if (alwaysOpen) return <div className="cust__toggle is-static">{children}</div>;
+  return (
+    <button
+      type="button"
+      className="cust__toggle"
+      aria-expanded={open}
+      aria-controls={open ? bodyId : undefined}
+      onClick={() => onToggle(!open)}
+    >
+      {children}
+    </button>
   );
 }
 

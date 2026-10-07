@@ -2340,7 +2340,14 @@ button:disabled {
 
 .drawer__foot {
   flex: none;
-  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+  /* Never more than about half the drawer: the job list above always keeps its room.
+     If the footer needs more (a long unlock error, say), it scrolls on its own. */
+  max-height: 52%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   background: var(--royal);
   color: #fff;
   border-radius: var(--r-lg) var(--r-lg) 0 0;
@@ -2362,18 +2369,18 @@ button:disabled {
   margin: 0;
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .groups-note {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--on-blue-3);
   text-align: right;
 }
 
 .groups {
   list-style: none;
-  margin: 4px 0 14px;
+  margin: 2px 0 12px;
   padding: 0;
   transition: opacity 0.2s;
 }
@@ -2387,21 +2394,24 @@ button:disabled {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--on-blue-line);
 }
 
+/* Label and job count share a line, to keep each total to a single row. */
 .group__label {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 8px;
   font-weight: 600;
-  font-size: 16.5px;
+  font-size: 15.5px;
   line-height: 1.25;
 }
 
 .group__label small {
   font-weight: 500;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--on-blue-3);
 }
 
@@ -2414,7 +2424,7 @@ button:disabled {
 
 .group__total b {
   font-weight: 800;
-  font-size: 26px;
+  font-size: 22px;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -2422,7 +2432,7 @@ button:disabled {
 .group__total span {
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--on-blue-2);
 }
 
@@ -2453,9 +2463,18 @@ button:disabled {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.drawer__foot .btn--copy {
+  height: 46px;
+  font-size: 16px;
+}
+
+.drawer__foot .btn--copy-secondary {
+  height: 42px;
+}
+
 .drawer__clear {
   flex: none;
-  height: 52px;
+  height: 46px;
   font-size: 15px;
   padding: 0 16px;
 }
@@ -2600,10 +2619,10 @@ button:disabled {
     font-size: 19px;
   }
   .drawer__foot {
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   }
   .group__total b {
-    font-size: 24px;
+    font-size: 20px;
   }
   .drawer__actions {
     flex-direction: column;
@@ -3399,8 +3418,8 @@ button:disabled {
 .pd {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .pd .link-btn {
@@ -3424,7 +3443,7 @@ button:disabled {
 
 /* With Send to Pipedrive leading, Copy steps back to an outline and Clear matches its height. */
 .drawer__foot.has-pd .drawer__clear {
-  height: 46px;
+  height: 42px;
 }
 
 .drawer__clear:disabled {
@@ -3674,14 +3693,14 @@ button:disabled {
 .pd-done {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pd-done__row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: var(--r-md);
   background: var(--royal-900);
 }
@@ -3690,8 +3709,8 @@ button:disabled {
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--ok);
   color: #053321;
@@ -3728,13 +3747,13 @@ button:disabled {
 .pd-done__title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 22px;
-  line-height: 1.1;
+  font-size: 18px;
+  line-height: 1.15;
 }
 
 .pd-done__meta {
-  margin: 3px 0 0;
-  font-size: 14px;
+  margin: 2px 0 0;
+  font-size: 13.5px;
   line-height: 1.35;
   color: var(--on-blue-2);
 }
@@ -3766,13 +3785,225 @@ button:disabled {
     row-gap: 10px;
   }
   .pd-done__text {
-    flex-basis: calc(100% - 48px);
+    flex-basis: calc(100% - 42px);
   }
   .pd-done__open {
-    margin-left: 48px;
+    margin-left: 42px;
   }
   .pd-unlock {
     padding: 12px 14px 10px;
+  }
+}
+
+/* ---------- Basket layout: columns, full screen, footer handle ---------- */
+
+.drawer__cols {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.drawer__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full screen: customer details on the left, jobs, totals and actions on the right. */
+.drawer.is-full {
+  width: 100vw;
+}
+
+.drawer.is-full .drawer__cols {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.drawer__side {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 8px 28px;
+  border-right: 1px solid var(--line);
+}
+
+.drawer.is-full .drawer__main {
+  flex: 0 0 min(520px, 46%);
+}
+
+.drawer.is-full .drawer__foot {
+  max-height: 64%;
+}
+
+.drawer__full {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--on-blue-line);
+  background: transparent;
+  color: #fff;
+}
+
+.drawer__full:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.drawer__full[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.drawer__full:focus-visible {
+  outline-color: var(--focus-on-blue);
+}
+
+.drawer__full svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The full-screen customer section can't collapse, so its heading isn't a button. */
+.cust__toggle.is-static,
+.cust__toggle.is-static:hover {
+  background: transparent;
+  cursor: default;
+}
+
+/* Footer handle: drag down (or click) to shrink to the totals, drag up (or click) to bring back the buttons. */
+.drawer__foot.has-grip {
+  padding-top: 4px;
+}
+
+.foot-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 22px;
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.foot-grip:active {
+  cursor: grabbing;
+}
+
+.foot-grip__bar {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.38);
+  transition:
+    background-color 0.15s,
+    width 0.15s var(--ease);
+}
+
+.foot-grip:hover .foot-grip__bar,
+.foot-grip:focus-visible .foot-grip__bar {
+  width: 58px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.drawer__foot.is-min {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+.mini-totals {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 2px 2px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.mini-totals.is-stale {
+  opacity: 0.6;
+}
+
+.mini-totals__label {
+  flex: none;
+  font-family: var(--font-serif);
+  font-size: 18px;
+}
+
+.mini-totals__list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px 16px;
+}
+
+.mini-totals__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.mini-totals__item b {
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-totals__item span,
+.mini-totals__none {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--on-blue-2);
+}
+
+/* Send pressed while blocked for a reason that isn't a missing field: a small shake draws the eye. */
+.pd-reason.is-nudged {
+  animation: pd-nudge 0.45s var(--ease);
+}
+
+@keyframes pd-nudge {
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-reason.is-nudged {
+    animation: none;
   }
 }
 
