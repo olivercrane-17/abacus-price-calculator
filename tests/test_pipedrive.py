@@ -270,10 +270,11 @@ def test_deal_title_is_just_the_customer_name(fake):
     assert fake.call("POST", "/api/v2/deals")["body"]["title"] == "Jane Smith"
 
 
-def test_very_long_names_are_trimmed(fake):
+def test_very_long_names_are_cut_without_adding_anything(fake):
     send_quote({"items": [windows()], "customer": {**JANE, "name": "Jane " * 100}})
     title = fake.call("POST", "/api/v2/deals")["body"]["title"]
-    assert len(title) <= pipedrive.MAX_TITLE and title.endswith("…")
+    assert len(title) <= pipedrive.MAX_TITLE
+    assert ("Jane " * 100).startswith(title)  # only the name itself, nothing appended
 
 
 def test_note_failure_after_deal_still_succeeds_with_warning(monkeypatch):

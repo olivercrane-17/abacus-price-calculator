@@ -213,9 +213,8 @@ def deal_url(deal_id: int) -> str:
 
 
 def _title(name: str) -> str:
-    """The deal is named after the customer; the jobs are listed in the note."""
-    title = name.strip()
-    return title if len(title) <= MAX_TITLE else title[: MAX_TITLE - 1].rstrip() + "…"
+    """The deal is named after the customer and nothing else; the jobs are listed in the note."""
+    return name.strip()[:MAX_TITLE].rstrip()
 
 
 def send_quote(body) -> dict:
