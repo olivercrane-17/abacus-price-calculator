@@ -212,9 +212,9 @@ def deal_url(deal_id: int) -> str:
 # --- Send ----------------------------------------------------------------------------
 
 
-def _title(name: str, titles: list[str]) -> str:
-    title = f"{name.strip()}: {' + '.join(titles)}"
-    return title if len(title) <= MAX_TITLE else title[: MAX_TITLE - 1].rstrip() + "…"
+def _title(name: str) -> str:
+    """The deal is named after the customer and nothing else; the jobs are listed in the note."""
+    return name.strip()[:MAX_TITLE].rstrip()
 
 
 def send_quote(body) -> dict:
@@ -259,7 +259,7 @@ def send_quote(body) -> dict:
     reused = person_id is not None
     if not reused:
         person_id = create_person(customer["name"], customer["email"], customer["phone"])
-    deal_id = create_deal(_title(customer["name"], [q["title"] for q in quotes]), value, person_id, stage_id)
+    deal_id = create_deal(_title(customer["name"]), value, person_id, stage_id)
 
     warning = None
     try:

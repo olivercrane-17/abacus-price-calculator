@@ -162,7 +162,7 @@ def test_new_customer_creates_person_deal_and_note(fake):
     assert person["phones"] == [{"value": "07920 422778", "primary": True, "label": "mobile"}]
 
     deal = fake.call("POST", "/api/v2/deals")["body"]
-    assert deal == {"title": "Jane Smith: 3 bed windows · every 4 weeks · conservatory + 3 bed gutters · Package 3",
+    assert deal == {"title": "Jane Smith",
                     "value": 236.0, "currency": "GBP", "person_id": 501, "stage_id": 32}
 
     note = fake.call("POST", "/api/v1/notes")["body"]
@@ -265,10 +265,16 @@ def test_stage_id_setting_skips_the_lookup(monkeypatch, fake):
     assert ("GET", "/api/v2/pipelines") not in fake.paths()
 
 
-def test_long_titles_are_trimmed(fake):
-    send_quote({"items": [windows()] * 20, "customer": JANE})
+def test_deal_title_is_just_the_customer_name(fake):
+    send_quote({"items": [windows()] * 5, "customer": {**JANE, "name": "  Jane Smith  "}})
+    assert fake.call("POST", "/api/v2/deals")["body"]["title"] == "Jane Smith"
+
+
+def test_very_long_names_are_cut_without_adding_anything(fake):
+    send_quote({"items": [windows()], "customer": {**JANE, "name": "Jane " * 100}})
     title = fake.call("POST", "/api/v2/deals")["body"]["title"]
-    assert len(title) <= pipedrive.MAX_TITLE and title.endswith("…")
+    assert len(title) <= pipedrive.MAX_TITLE
+    assert ("Jane " * 100).startswith(title)  # only the name itself, nothing appended
 
 
 def test_note_failure_after_deal_still_succeeds_with_warning(monkeypatch):
