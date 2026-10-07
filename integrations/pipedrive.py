@@ -3,7 +3,9 @@
 Settings come only from environment variables (the repo is public):
   PIPEDRIVE_API_TOKEN       personal API token (Pipedrive > Personal preferences > API)
   PIPEDRIVE_COMPANY_DOMAIN  e.g. "abacus" for abacus.pipedrive.com
-  PIPEDRIVE_STAGE_ID        optional; without it Pipedrive puts deals in the default pipeline's first stage
+  PIPEDRIVE_PIPELINE        optional pipeline name, default "Website"
+  PIPEDRIVE_STAGE           optional stage name in that pipeline, default "Deal Added"
+  PIPEDRIVE_STAGE_ID        optional stage id; skips the name lookup when set
 The token is sent in the x-api-token header, never in the URL, and customer data is never logged.
 """
 
@@ -25,6 +27,13 @@ from .customer import customer_block, parse_customer, require_contact
 
 TIMEOUT_SECONDS = 8
 MAX_TITLE = 200
+
+# Where new deals go. Looked up by name so nobody has to find Pipedrive's internal ids.
+DEFAULT_PIPELINE = "Website"
+DEFAULT_STAGE = "Deal Added"
+
+# (domain, pipeline, stage) -> stage id, for as long as the serverless function stays warm.
+_stage_cache: dict[tuple[str, str, str], int] = {}
 
 _DOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 
@@ -62,9 +71,17 @@ def _domain() -> str | None:
     return normalise_domain(os.environ.get("PIPEDRIVE_COMPANY_DOMAIN", ""))
 
 
-def _stage_id() -> int | None:
+def _stage_id_setting() -> int | None:
     raw = os.environ.get("PIPEDRIVE_STAGE_ID", "").strip()
     return int(raw) if raw.isdigit() else None
+
+
+def _pipeline_name() -> str:
+    return os.environ.get("PIPEDRIVE_PIPELINE", "").strip() or DEFAULT_PIPELINE
+
+
+def _stage_name() -> str:
+    return os.environ.get("PIPEDRIVE_STAGE", "").strip() or DEFAULT_STAGE
 
 
 def enabled() -> bool:
@@ -138,11 +155,41 @@ def create_person(name: str, email: str, phone: str) -> int:
     return _created_id(_call("POST", "/api/v2/persons", body=body))
 
 
-def create_deal(title: str, value_pence: int, person_id: int) -> int:
-    body = {"title": title, "value": value_pence / 100, "currency": "GBP", "person_id": person_id}
-    stage = _stage_id()
-    if stage is not None:
-        body["stage_id"] = stage
+def _same(a, b: str) -> bool:
+    return isinstance(a, str) and a.strip().casefold() == b.strip().casefold()
+
+
+def find_stage_id() -> int:
+    """The id of the configured stage ("Deal Added" in the "Website" pipeline by default).
+
+    Raises PipedriveError if the pipeline or stage can't be found, so deals never land somewhere else.
+    """
+    configured = _stage_id_setting()
+    if configured is not None:
+        return configured
+    pipeline_name, stage_name = _pipeline_name(), _stage_name()
+    key = (_domain() or "", pipeline_name.casefold(), stage_name.casefold())
+    if key in _stage_cache:
+        return _stage_cache[key]
+
+    pipelines = _call("GET", "/api/v2/pipelines", params={"limit": "500"}).get("data") or []
+    pipeline = next((p for p in pipelines if isinstance(p, dict) and _same(p.get("name"), pipeline_name)), None)
+    if pipeline is None:
+        raise PipedriveError(f"Couldn't find the '{pipeline_name}' pipeline in Pipedrive. Check it hasn't been "
+                             "renamed, or ask the office to update the Pipedrive settings in Vercel.")
+    stages = _call("GET", "/api/v2/stages",
+                   params={"pipeline_id": str(pipeline["id"]), "limit": "500"}).get("data") or []
+    stage = next((s for s in stages if isinstance(s, dict) and _same(s.get("name"), stage_name)), None)
+    if stage is None:
+        raise PipedriveError(f"Couldn't find the '{stage_name}' stage in the '{pipeline_name}' pipeline. Check it "
+                             "hasn't been renamed, or ask the office to update the Pipedrive settings in Vercel.")
+    _stage_cache[key] = stage["id"]
+    return stage["id"]
+
+
+def create_deal(title: str, value_pence: int, person_id: int, stage_id: int) -> int:
+    body = {"title": title, "value": value_pence / 100, "currency": "GBP", "person_id": person_id,
+            "stage_id": stage_id}
     return _created_id(_call("POST", "/api/v2/deals", body=body))
 
 
@@ -207,11 +254,12 @@ def send_quote(body) -> dict:
     value = sum(q["total"] for q in quotes)
     note = customer_block(customer) + "\n\n" + priced["summary_text"]
 
+    stage_id = find_stage_id()  # first, so a missing stage stops the send before anything is created
     person_id = find_person(customer["email"], customer["phone"])
     reused = person_id is not None
     if not reused:
         person_id = create_person(customer["name"], customer["email"], customer["phone"])
-    deal_id = create_deal(_title(customer["name"], [q["title"] for q in quotes]), value, person_id)
+    deal_id = create_deal(_title(customer["name"], [q["title"] for q in quotes]), value, person_id, stage_id)
 
     warning = None
     try:

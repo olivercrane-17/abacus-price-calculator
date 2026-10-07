@@ -25,11 +25,18 @@ class _Resp(io.BytesIO):
 class FakePipedrive:
     """Stands in for urlopen: routes by method + path and records every request."""
 
-    def __init__(self, existing_email=None, existing_phone=None, fail=None):
+    def __init__(self, existing_email=None, existing_phone=None, fail=None, pipelines=None, stages=None):
         self.calls = []
         self.existing_email = existing_email or {}
         self.existing_phone = existing_phone or {}
         self.fail = fail or {}  # (method, path) -> HTTP status or exception
+        # A "Deal Added" stage exists in another pipeline too, so the pipeline must be matched first.
+        self.pipelines = pipelines if pipelines is not None else [
+            {"id": 1, "name": "Sales"}, {"id": 3, "name": "Website"}]
+        self.stages = stages if stages is not None else {
+            1: [{"id": 10, "name": "Deal Added", "pipeline_id": 1}],
+            3: [{"id": 31, "name": "Lead In", "pipeline_id": 3}, {"id": 32, "name": "Deal Added", "pipeline_id": 3}],
+        }
 
     def __call__(self, req, timeout=None):
         url = urlparse(req.full_url)
@@ -44,6 +51,11 @@ class FakePipedrive:
             raise urllib.error.HTTPError(req.full_url, failure, "err", {}, io.BytesIO(b"{}"))
         if failure is not None:
             raise failure
+        if method == "GET" and url.path == "/api/v2/pipelines":
+            return _Resp(json.dumps({"success": True, "data": self.pipelines}).encode())
+        if method == "GET" and url.path == "/api/v2/stages":
+            data = self.stages.get(int(query["pipeline_id"]), [])
+            return _Resp(json.dumps({"success": True, "data": data}).encode())
         if method == "GET" and url.path == "/api/v2/persons/search":
             table = self.existing_email if query["fields"] == "email" else self.existing_phone
             found = table.get(query["term"])
@@ -69,8 +81,10 @@ def settings(monkeypatch):
     monkeypatch.setenv("PIPEDRIVE_API_TOKEN", TOKEN)
     monkeypatch.setenv("PIPEDRIVE_COMPANY_DOMAIN", "abacus")
     monkeypatch.setenv("STAFF_PASSCODE", "window-wash-42")
-    monkeypatch.delenv("PIPEDRIVE_STAGE_ID", raising=False)
+    for name in ("PIPEDRIVE_STAGE_ID", "PIPEDRIVE_PIPELINE", "PIPEDRIVE_STAGE"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(auth, "WRONG_PASSCODE_DELAY", 0)
+    pipedrive._stage_cache.clear()
 
 
 @pytest.fixture
@@ -130,6 +144,8 @@ def test_disabled_without_any_setting(monkeypatch, missing):
 def test_new_customer_creates_person_deal_and_note(fake):
     r = send_quote({"items": [windows(), gutters()], "customer": JANE})
     assert fake.paths() == [
+        ("GET", "/api/v2/pipelines"),        # find "Website"
+        ("GET", "/api/v2/stages"),           # find "Deal Added" in it
         ("GET", "/api/v2/persons/search"),   # by email
         ("GET", "/api/v2/persons/search"),   # by phone as typed
         ("GET", "/api/v2/persons/search"),   # by phone digits only
@@ -147,7 +163,7 @@ def test_new_customer_creates_person_deal_and_note(fake):
 
     deal = fake.call("POST", "/api/v2/deals")["body"]
     assert deal == {"title": "Jane Smith: 3 bed windows · every 4 weeks · conservatory + 3 bed gutters · Package 3",
-                    "value": 236.0, "currency": "GBP", "person_id": 501}
+                    "value": 236.0, "currency": "GBP", "person_id": 501, "stage_id": 32}
 
     note = fake.call("POST", "/api/v1/notes")["body"]
     assert note["deal_id"] == 7001
@@ -167,7 +183,7 @@ def test_token_only_in_header_and_host_is_company_domain(fake):
 
 def test_search_uses_exact_match(fake):
     send_quote({"items": [windows()], "customer": JANE})
-    q = fake.calls[0]["query"]
+    q = fake.call("GET", "/api/v2/persons/search")["query"]
     assert q == {"term": "jane@gmail.com", "fields": "email", "exact_match": "true", "limit": "1"}
 
 
@@ -199,10 +215,54 @@ def test_overrides_count_in_the_value(fake):
     assert r["value"] == 15000
 
 
-def test_stage_override(monkeypatch, fake):
+def test_deals_go_to_deal_added_in_the_website_pipeline(fake):
+    send_quote({"items": [windows()], "customer": JANE})
+    assert fake.call("GET", "/api/v2/stages")["query"]["pipeline_id"] == "3"
+    assert fake.call("POST", "/api/v2/deals")["body"]["stage_id"] == 32  # not 10, the Sales pipeline's stage
+
+
+def test_stage_names_match_ignoring_case_and_spaces(monkeypatch):
+    f = FakePipedrive(pipelines=[{"id": 3, "name": " website "}],
+                      stages={3: [{"id": 32, "name": "DEAL ADDED", "pipeline_id": 3}]})
+    monkeypatch.setattr(pipedrive, "urlopen", f)
+    send_quote({"items": [windows()], "customer": JANE})
+    assert f.call("POST", "/api/v2/deals")["body"]["stage_id"] == 32
+
+
+def test_stage_is_looked_up_once_per_warm_function(fake):
+    send_quote({"items": [windows()], "customer": JANE})
+    send_quote({"items": [windows()], "customer": JANE})
+    assert fake.paths().count(("GET", "/api/v2/pipelines")) == 1
+    assert fake.paths().count(("GET", "/api/v2/stages")) == 1
+
+
+@pytest.mark.parametrize("pipelines,stages,words", [
+    ([{"id": 1, "name": "Sales"}], {1: [{"id": 10, "name": "Deal Added"}]}, "'Website' pipeline"),
+    ([{"id": 3, "name": "Website"}], {3: [{"id": 31, "name": "Lead In"}]}, "'Deal Added' stage"),
+])
+def test_missing_pipeline_or_stage_stops_before_anything_is_created(monkeypatch, pipelines, stages, words):
+    f = FakePipedrive(pipelines=pipelines, stages=stages)
+    monkeypatch.setattr(pipedrive, "urlopen", f)
+    with pytest.raises(PipedriveError) as exc:
+        send_quote({"items": [windows()], "customer": JANE})
+    assert words in exc.value.message
+    assert not any(m == "POST" for m, _ in f.paths())
+
+
+def test_pipeline_and_stage_names_can_be_changed_in_settings(monkeypatch):
+    monkeypatch.setenv("PIPEDRIVE_PIPELINE", "Sales")
+    monkeypatch.setenv("PIPEDRIVE_STAGE", "Deal Added")
+    f = FakePipedrive()
+    monkeypatch.setattr(pipedrive, "urlopen", f)
+    send_quote({"items": [windows()], "customer": JANE})
+    assert f.call("POST", "/api/v2/deals")["body"]["stage_id"] == 10
+
+
+def test_stage_id_setting_skips_the_lookup(monkeypatch, fake):
     monkeypatch.setenv("PIPEDRIVE_STAGE_ID", "12")
     send_quote({"items": [windows()], "customer": JANE})
     assert fake.call("POST", "/api/v2/deals")["body"]["stage_id"] == 12
+    assert ("GET", "/api/v2/pipelines") not in fake.paths()
 
 
 def test_long_titles_are_trimmed(fake):

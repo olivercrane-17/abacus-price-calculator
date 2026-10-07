@@ -45,7 +45,8 @@ then redeploy:
 - `PIPEDRIVE_API_TOKEN`: from Pipedrive → Personal preferences → API.
 - `PIPEDRIVE_COMPANY_DOMAIN`: e.g. `abacus` if your Pipedrive address is abacus.pipedrive.com.
 - `STAFF_PASSCODE`: a long shared passcode that staff enter once per device.
-- `PIPEDRIVE_STAGE_ID` (optional): which stage new deals go into.
+- New deals go to the **"Deal Added"** stage of the **"Website"** pipeline, found by name. To use a different
+  place, set `PIPEDRIVE_PIPELINE` / `PIPEDRIVE_STAGE` (names) or `PIPEDRIVE_STAGE_ID` (optional).
 
 Never put these values in the code; the repo is public. To try the flow locally without a real account, run
 `.venv\Scripts\python scripts\dev_fake_pipedrive.py` (passcode `demo-passcode`) alongside `npm run dev`.

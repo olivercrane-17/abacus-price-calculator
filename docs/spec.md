@@ -241,7 +241,7 @@ re-key them.
 - **What's created:**
   - A **Person**, matched by exact email, then phone (as typed, then digits only), and reused without overwriting
     their details. A new person is created only if there's no match.
-  - A **Deal** in GBP, worth the **first-visit value** (the sum of every item total: one of each regular clean plus
+  - A **Deal** in the **"Deal Added" stage of the "Website" pipeline**, in GBP, worth the **first-visit value** (the sum of every item total: one of each regular clean plus
     all one-off work). Its title is "{name}: {item titles}".
   - A **Note** on the deal holding the CUSTOMER block plus the basket record. Address, heard-via, preferred contact
     and notes go only in the note, with no Pipedrive custom fields.
@@ -266,7 +266,9 @@ re-key them.
 | `PIPEDRIVE_API_TOKEN` | yes | Pipedrive → Personal preferences → API |
 | `PIPEDRIVE_COMPANY_DOMAIN` | yes | The first part of your Pipedrive address, e.g. `abacus` for abacus.pipedrive.com |
 | `STAFF_PASSCODE` | yes | The shared staff passcode |
-| `PIPEDRIVE_STAGE_ID` | no | A stage id, to put deals somewhere other than the default pipeline's first stage |
+| `PIPEDRIVE_PIPELINE` | no | Pipeline name for new deals (default `Website`) |
+| `PIPEDRIVE_STAGE` | no | Stage name in that pipeline (default `Deal Added`) |
+| `PIPEDRIVE_STAGE_ID` | no | A stage id; skips the name lookup |
 
 Until the three required settings are present, the button is hidden and the site works exactly as before.
 
@@ -287,3 +289,9 @@ only in the `x-api-token` header.
 ### Local testing
 `.venv\Scripts\python scripts\dev_fake_pipedrive.py` runs the API with a fake, in-memory Pipedrive (passcode
 `demo-passcode`).
+
+### Where deals go
+- **Default destination:** the "Deal Added" stage of the "Website" pipeline. They're found **by name** (ignoring case
+  and spaces) before anything is created, and the result is remembered while the function stays warm.
+- **If either has been renamed or removed,** the send stops with a message naming the missing pipeline or stage, and
+  nothing is created in Pipedrive. Deals never fall back to another pipeline.
