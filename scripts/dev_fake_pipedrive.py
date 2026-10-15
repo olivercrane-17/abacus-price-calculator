@@ -5,7 +5,7 @@
 Staff passcode for this fake server: demo-passcode
 Nothing leaves this computer: Pipedrive calls are answered in memory and printed (without customer data).
 "jane@example.com" is treated as an existing Pipedrive contact; any other email creates a new one.
-It has a "Website" pipeline with a "Deal Added" stage, like the real account.
+It has a "PHONE CALLS" pipeline with a "LEAD IN" stage, like the real account.
 For the real thing, set PIPEDRIVE_API_TOKEN, PIPEDRIVE_COMPANY_DOMAIN and STAFF_PASSCODE in Vercel.
 """
 
@@ -44,9 +44,9 @@ def fake_urlopen(req, timeout=None):
     method = req.get_method()
     print(f"[fake pipedrive] {method} {url.path}", flush=True)
     if url.path == "/api/v2/pipelines":
-        return _Resp(json.dumps({"success": True, "data": [{"id": 3, "name": "Website"}]}).encode())
+        return _Resp(json.dumps({"success": True, "data": [{"id": 5, "name": "PHONE CALLS"}]}).encode())
     if url.path == "/api/v2/stages":
-        stages = [{"id": 31, "name": "Lead In"}, {"id": 32, "name": "Deal Added"}]
+        stages = [{"id": 51, "name": "LEAD IN"}, {"id": 52, "name": "Quote sent"}]
         return _Resp(json.dumps({"success": True, "data": stages}).encode())
     if url.path == "/api/v2/persons/search":
         term = parse_qs(url.query).get("term", [""])[0]

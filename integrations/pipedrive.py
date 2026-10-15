@@ -3,8 +3,8 @@
 Settings come only from environment variables (the repo is public):
   PIPEDRIVE_API_TOKEN       personal API token (Pipedrive > Personal preferences > API)
   PIPEDRIVE_COMPANY_DOMAIN  e.g. "abacus" for abacus.pipedrive.com
-  PIPEDRIVE_PIPELINE        optional pipeline name, default "Website"
-  PIPEDRIVE_STAGE           optional stage name in that pipeline, default "Deal Added"
+  PIPEDRIVE_PIPELINE        optional pipeline name, default "PHONE CALLS"
+  PIPEDRIVE_STAGE           optional stage name in that pipeline, default "LEAD IN"
   PIPEDRIVE_STAGE_ID        optional stage id; skips the name lookup when set
 The token is sent in the x-api-token header, never in the URL, and customer data is never logged.
 """
@@ -29,8 +29,8 @@ TIMEOUT_SECONDS = 8
 MAX_TITLE = 200
 
 # Where new deals go. Looked up by name so nobody has to find Pipedrive's internal ids.
-DEFAULT_PIPELINE = "Website"
-DEFAULT_STAGE = "Deal Added"
+DEFAULT_PIPELINE = "PHONE CALLS"
+DEFAULT_STAGE = "LEAD IN"
 
 # (domain, pipeline, stage) -> stage id, for as long as the serverless function stays warm.
 _stage_cache: dict[tuple[str, str, str], int] = {}
@@ -160,7 +160,7 @@ def _same(a, b: str) -> bool:
 
 
 def find_stage_id() -> int:
-    """The id of the configured stage ("Deal Added" in the "Website" pipeline by default).
+    """The id of the configured stage ("LEAD IN" in the "PHONE CALLS" pipeline by default).
 
     Raises PipedriveError if the pipeline or stage can't be found, so deals never land somewhere else.
     """
