@@ -154,7 +154,7 @@ def test_new_customer_creates_person_deal_and_note(fake):
         ("POST", "/api/v1/notes"),
     ]
     assert r == {"deal_id": 7001, "deal_url": "https://abacus.pipedrive.com/deal/7001", "person_id": 501,
-                 "person_reused": False, "value": 23600, "warning": None}
+                 "person_reused": False, "value": 25700, "warning": None}
 
     person = fake.call("POST", "/api/v2/persons")["body"]
     assert person["name"] == "Jane Smith"
@@ -163,7 +163,7 @@ def test_new_customer_creates_person_deal_and_note(fake):
 
     deal = fake.call("POST", "/api/v2/deals")["body"]
     assert deal == {"title": "Jane Smith",
-                    "value": 236.0, "currency": "GBP", "person_id": 501, "stage_id": 51}
+                    "value": 257.0, "currency": "GBP", "person_id": 501, "stage_id": 51}
 
     note = fake.call("POST", "/api/v1/notes")["body"]
     assert note["deal_id"] == 7001
@@ -206,8 +206,8 @@ def test_existing_person_found_by_phone_digits(monkeypatch):
 def test_value_is_server_priced_and_ignores_client_totals(fake):
     item = windows(total=1, subtotal=1, value=999999)
     r = send_quote({"items": [item], "customer": JANE, "value": 1})
-    assert r["value"] == 3600
-    assert fake.call("POST", "/api/v2/deals")["body"]["value"] == 36.0
+    assert r["value"] == 3700
+    assert fake.call("POST", "/api/v2/deals")["body"]["value"] == 37.0
 
 
 def test_overrides_count_in_the_value(fake):

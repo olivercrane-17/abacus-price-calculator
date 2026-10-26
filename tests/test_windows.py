@@ -38,16 +38,16 @@ def test_three_bed_four_weekly_no_conservatory():
     assert r["quote_type"] == "windows"
     assert r["basis"] == "per_visit"
     assert r["basis_label"] == "per visit, every 4 weeks"
-    assert r["lines"] == [{"key": "house", "label": "3 bed house: windows outside", "amount": 2700}]
-    assert r["subtotal"] == 2700
-    assert r["total"] == 2700
+    assert r["lines"] == [{"key": "house", "label": "3 bed house: windows outside", "amount": 2800}]
+    assert r["subtotal"] == 2800
+    assert r["total"] == 2800
     assert r["override"] is None
     assert r["warnings"] == []
 
 
 @pytest.mark.parametrize(
     "beds,freq,pence",
-    [(1, "4", 1500), (2, "6", 2500), (4, "8", 3200), (5, "12", 4500), (2, "12", 2800)],
+    [(1, "4", 2000), (2, "6", 2500), (4, "8", 3600), (5, "12", 4900), (2, "12", 2800)],
 )
 def test_regular_house_prices(beds, freq, pence):
     r = quote(windows(property={"kind": "standard", "bedrooms": beds}, frequency=freq))
@@ -56,27 +56,27 @@ def test_regular_house_prices(beds, freq, pence):
 
 
 def test_frequency_may_be_given_as_number():
-    assert quote(windows(frequency=8))["total"] == 2900
+    assert quote(windows(frequency=8))["total"] == 3000
 
 
 def test_three_bed_four_weekly_standard_conservatory():
     r = quote(windows(conservatory="standard"))
     assert r["lines"] == [
-        {"key": "house", "label": "3 bed house: windows outside", "amount": 2700},
+        {"key": "house", "label": "3 bed house: windows outside", "amount": 2800},
         {"key": "conservatory", "label": "Conservatory/extension", "amount": 900},
     ]
-    assert r["total"] == 3600
+    assert r["total"] == 3700
 
 
 def test_five_bed_conservatory_addon():
     r = quote(windows(property={"kind": "standard", "bedrooms": 5}, conservatory="standard"))
-    assert r["total"] == 3700 + 1200
+    assert r["total"] == 3900 + 1200
 
 
 def test_internal_doubles_house_and_conservatory():
     r = quote(windows(conservatory="standard", internal=True))
-    assert amounts(r)["internal"] == 7200
-    assert r["total"] == 10800
+    assert amounts(r)["internal"] == 7400
+    assert r["total"] == 11100
     assert [l["label"] for l in r["lines"]][-1] == "Internal windows"
 
 
@@ -116,14 +116,14 @@ def test_large_conservatory_regular_replaces_addon():
         )
     )
     assert r["lines"] == [
-        {"key": "house", "label": "4 bed house: windows outside", "amount": 3200},
+        {"key": "house", "label": "4 bed house: windows outside", "amount": 3600},
         {
             "key": "conservatory",
             "label": "Larger conservatory/extension (staff price)",
             "amount": 2000,
         },
     ]
-    assert r["total"] == 5200
+    assert r["total"] == 5600
     assert warning_keys(r) == ["large_conservatory"]
     assert r["warnings"][0]["message"].startswith("Larger than average conservatory")
 
@@ -162,7 +162,7 @@ def test_large_conservatory_requires_price():
 
 def test_large_conservatory_price_ignored_when_not_large():
     r = quote(windows(conservatory="standard", large_conservatory_price=99))
-    assert r["total"] == 3600
+    assert r["total"] == 3700
 
 
 def test_staff_price_rounds_half_up_to_pence():
@@ -224,14 +224,14 @@ def test_roof_outside_minimum_applies():
 
 def test_roof_outside_above_minimum():
     r = quote(windows(conservatory_roof={"external_panels": 4}))
-    assert amounts(r)["roof_external"] == 3200
+    assert amounts(r)["roof_external"] == 3600
     labels = {l["key"]: l["label"] for l in r["lines"]}
     assert labels["roof_external"] == "Conservatory roof outside (4 panels)"
 
 
 def test_roof_inside_only_has_no_minimum():
     r = quote(windows(conservatory_roof={"external_panels": 0, "internal_panels": 2}))
-    assert amounts(r) == {"house": 2700, "roof_internal": 3200}
+    assert amounts(r) == {"house": 2800, "roof_internal": 3200}
     labels = {l["key"]: l["label"] for l in r["lines"]}
     assert labels["roof_internal"] == "Conservatory roof inside (2 panels)"
 
@@ -244,8 +244,8 @@ def test_roof_single_inside_panel():
 
 def test_roof_not_doubled_by_internal():
     r = quote(windows(internal=True, conservatory_roof={"external_panels": 4}))
-    assert amounts(r)["internal"] == 5400
-    assert r["total"] == 2700 + 5400 + 3200
+    assert amounts(r)["internal"] == 5600
+    assert r["total"] == 2800 + 5600 + 3600
 
 
 # --- Velux and lanterns -------------------------------------------------------
@@ -254,12 +254,12 @@ def test_roof_not_doubled_by_internal():
 def test_velux():
     r = quote(windows(velux={"external": 3, "internal": 2}))
     a = amounts(r)
-    assert a["velux_external"] == 450
-    assert a["velux_internal"] == 600
+    assert a["velux_external"] == 600
+    assert a["velux_internal"] == 800
     labels = {l["key"]: l["label"] for l in r["lines"]}
     assert labels["velux_external"] == "Velux outside × 3"
     assert labels["velux_internal"] == "Velux inside × 2"
-    assert r["total"] == 2700 + 1050
+    assert r["total"] == 2800 + 1400
 
 
 def test_lanterns_per_size_and_side():
@@ -296,7 +296,7 @@ def test_larger_lantern_price_and_warning():
     assert amounts(r)["larger_lantern"] == 4500
     assert r["lines"][-1]["label"] == "Larger roof lantern/structure (staff price)"
     assert warning_keys(r) == ["larger_lantern"]
-    assert r["total"] == 7200
+    assert r["total"] == 7300
 
 
 def test_extras_on_one_off():
@@ -307,7 +307,7 @@ def test_extras_on_one_off():
             conservatory_roof={"external_panels": 1},
         )
     )
-    assert r["total"] == 6200 + 300 + 2500
+    assert r["total"] == 6200 + 400 + 2500
 
 
 # --- Comparison --------------------------------------------------------------
@@ -316,10 +316,10 @@ def test_extras_on_one_off():
 def test_comparison_all_frequencies_with_same_options():
     r = quote(windows(conservatory="standard", velux={"external": 2}))
     assert r["comparison"] == [
-        {"frequency": "4", "label": "Every 4 weeks", "total": 3900, "selected": True},
-        {"frequency": "6", "label": "Every 6 weeks", "total": 4000, "selected": False},
-        {"frequency": "8", "label": "Every 8 weeks", "total": 4100, "selected": False},
-        {"frequency": "12", "label": "Every 12 weeks", "total": 4300, "selected": False},
+        {"frequency": "4", "label": "Every 4 weeks", "total": 4100, "selected": True},
+        {"frequency": "6", "label": "Every 6 weeks", "total": 4200, "selected": False},
+        {"frequency": "8", "label": "Every 8 weeks", "total": 4300, "selected": False},
+        {"frequency": "12", "label": "Every 12 weeks", "total": 4500, "selected": False},
     ]
 
 
@@ -332,14 +332,14 @@ def test_comparison_ignores_override_and_includes_internal():
         )
     )
     totals = {c["frequency"]: c["total"] for c in r["comparison"]}
-    assert totals == {"4": 8100, "6": 8400, "8": 8700, "12": 9300}
+    assert totals == {"4": 8400, "6": 8700, "8": 9000, "12": 9600}
     assert [c["selected"] for c in r["comparison"]] == [False, True, False, False]
     assert r["total"] == 1000
 
 
 def test_comparison_with_large_conservatory():
     r = quote(windows(conservatory="large", large_conservatory_price=20))
-    assert [c["total"] for c in r["comparison"]] == [4700, 4800, 4900, 5100]
+    assert [c["total"] for c in r["comparison"]] == [4800, 4900, 5000, 5200]
 
 
 # --- Override ----------------------------------------------------------------
@@ -347,7 +347,7 @@ def test_comparison_with_large_conservatory():
 
 def test_override_replaces_total_and_keeps_subtotal():
     r = quote(windows(conservatory="standard", override={"total": 40, "reason": "Regular customer rate"}))
-    assert r["subtotal"] == 3600
+    assert r["subtotal"] == 3700
     assert r["total"] == 4000
     assert r["override"] == {"total": 4000, "reason": "Regular customer rate"}
 
@@ -396,7 +396,7 @@ def test_non_integer_count_rejected():
 
 
 def test_integral_float_count_accepted():
-    assert quote(windows(velux={"external": 2.0}))["total"] == 3000
+    assert quote(windows(velux={"external": 2.0}))["total"] == 3200
 
 
 def test_negative_money_rejected():
@@ -456,8 +456,8 @@ def test_summary_text_with_override():
     assert "Property: 3 bed house" in lines
     assert "Frequency: Every 4 weeks" in lines
     assert "Conservatory/extension: Standard" in lines
-    assert "3 bed house: windows outside".ljust(34) + "£27.00" in lines
-    assert any(l.startswith("Calculated total") and l.endswith("£36.00") for l in lines)
+    assert "3 bed house: windows outside".ljust(34) + "£28.00" in lines
+    assert any(l.startswith("Calculated total") and l.endswith("£37.00") for l in lines)
     assert any(l.startswith("OVERRIDE") and "£40.00" in l and "(Reason: Regular customer rate)" in l for l in lines)
     assert any(l.startswith("TOTAL PER VISIT") and l.endswith("£40.00") for l in lines)
     assert lines[-1] == "Prices include VAT."

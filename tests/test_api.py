@@ -52,8 +52,8 @@ def test_quote_windows():
         "quote_type", "title", "frequency", "basis", "basis_label", "lines", "subtotal", "override",
         "total", "warnings", "comparison", "summary_text",
     }
-    assert body["total"] == 3600
-    assert body["comparison"][1] == {"frequency": "6", "label": "Every 6 weeks", "total": 3700, "selected": False}
+    assert body["total"] == 3700
+    assert body["comparison"][1] == {"frequency": "6", "label": "Every 6 weeks", "total": 3800, "selected": False}
 
 
 def test_quote_gutters():

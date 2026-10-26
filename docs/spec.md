@@ -1,11 +1,11 @@
 # Abacus price calculator: design spec
 
-Date: 2026-10-05. Source price list: `Window Cleaning Price List Feb 25.xlsx`. All prices live in `prices.json`.
+Date: 2026-10-05. Source price list: `Window Cleaning Price List 26/27.xlsx` (updated from the Feb 25 list on 2026-10-26). All prices live in `prices.json`.
 
 ## Purpose
 
 An internal web tool for Abacus Window Cleaning Ltd staff taking enquiries. Staff quickly and accurately quote
-**window cleaning** and **gutter & fascia** work from the Feb 25 price list. It is desktop-first but works on a phone.
+**window cleaning** and **gutter & fascia** work from the 2026/27 price list. It is desktop-first but works on a phone.
 
 - Hosted on the Vercel free tier with **no login** (the prices are public).
 - **Nothing is stored and there are no customer details.** The result is shown on screen with a "Copy" button that
@@ -38,9 +38,9 @@ Inputs:
   - Not available for an "other" property (the staff price covers it).
 - Internal windows (toggle): internal = `internal_multiplier` (2) × the external window price (house +
   conservatory, or the staff price for "other"). It is added to every visit on regular cleans, or once for a one-off.
-- Conservatory roof: outside panels × £8, raised to a **£25 minimum** if outside panels > 0. Inside panels × £16 with
+- Conservatory roof: outside panels × £9, raised to a **£25 minimum** if outside panels > 0. Inside panels × £16 with
   no minimum.
-- Velux: outside count × £1.50, inside count × £3.
+- Velux: outside count × £2, inside count × £4 (inside is double outside; the sheet lists outside only).
 - Roof lanterns: counts per size (small/medium/large) for outside and inside, at £10/£15/£20 outside and
   £20/£30/£40 inside. "Larger structure": staff enter a price (from customer photos). It shows the `larger_lantern`
   warning.

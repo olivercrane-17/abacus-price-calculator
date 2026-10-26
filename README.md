@@ -1,7 +1,7 @@
 # Abacus Price Calculator
 
 An internal quoting tool for Abacus Window Cleaning Ltd staff. It handles window cleaning and gutter & fascia
-quotes from the Feb 2025 price list.
+quotes from the 2026/27 price list (`Window Cleaning Price List 26/27.xlsx`).
 
 - **Pricing engine:** Python (`pricing/`), tested with pytest (`tests/`).
 - **API:** FastAPI (`api/index.py`), running as a Vercel serverless function.
