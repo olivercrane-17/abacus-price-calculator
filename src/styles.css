@@ -2086,7 +2086,7 @@ button:disabled {
 
 .drawer__body {
   flex: 1;
-  min-height: 0;
+  min-height: 150px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -2340,13 +2340,8 @@ button:disabled {
 
 .drawer__foot {
   flex: none;
-  /* Never more than about half the drawer: the job list above always keeps its room.
-     If the footer needs more (a long unlock error, say), it scrolls on its own. */
-  max-height: 52%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  /* Always shows everything in it. On short windows the jobs list shrinks instead, down to a minimum,
+     and below that the whole basket column scrolls (see .drawer__main), so nothing is ever cut off. */
   padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   background: var(--royal);
   color: #fff;
@@ -3873,6 +3868,9 @@ button:disabled {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Only scrolls on very short windows, when the jobs list is at its minimum and the footer still doesn't fit. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Full screen: customer details on the left, jobs, totals and actions on the right. */
@@ -3897,10 +3895,6 @@ button:disabled {
 
 .drawer.is-full .drawer__main {
   flex: 0 0 min(520px, 46%);
-}
-
-.drawer.is-full .drawer__foot {
-  max-height: 64%;
 }
 
 .drawer__full {
