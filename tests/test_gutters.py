@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from pricing import ValidationError, quote
+from pricing import ValidationError, load_prices, quote
 
 
 def gutters(**overrides):
@@ -36,9 +36,9 @@ def test_three_bed_clearance():
     assert r["basis"] == "one_off"
     assert r["basis_label"] == "one-off job"
     assert r["lines"] == [
-        {"key": "service", "label": "Gutter Clearance", "amount": 12000}
+        {"key": "service", "label": "Gutter Clearance", "amount": 13000}
     ]
-    assert r["total"] == 12000
+    assert r["total"] == 13000
     assert r["comparison"] is None
     assert r["warnings"] == []
 
@@ -47,12 +47,12 @@ def test_three_bed_clearance():
     "beds,service,cons,pence",
     [
         (2, "package3", True, 18000),
-        (2, "outer", False, 10000),
-        (3, "package3", True, 22000),
-        (4, "outer", True, 15200),
-        (4, "clearance", False, 13700),
-        (5, "package3", False, 25000),
-        (5, "clearance", True, 17500),
+        (2, "outer", False, 11000),
+        (3, "package3", True, 24000),
+        (4, "outer", True, 15700),
+        (4, "clearance", False, 14900),
+        (5, "package3", False, 27000),
+        (5, "clearance", True, 18500),
     ],
 )
 def test_sheet_prices(beds, service, cons, pence):
@@ -86,19 +86,33 @@ def test_five_bed_heavily_soiled_with_conservatory():
         {
             "key": "service",
             "label": "Gutter Clearance + conservatory/extension",
-            "amount": 17500,
+            "amount": 18500,
         },
-        {"key": "heavily_soiled", "label": "Heavily soiled first clean (×2.5)", "amount": 26250},
+        {"key": "heavily_soiled", "label": "Heavily soiled first clean (×2.5)", "amount": 27750},
     ]
-    assert r["total"] == 43750
+    assert r["total"] == 46250
     assert warning_keys(r) == ["gutters_5_bed"]
 
 
 def test_heavily_soiled_rounds_half_up():
-    # 137 * 1.5 = 205.50 exactly; check an odd case via package3 4 bed: 232 * 1.5 = 348
+    # Every sheet gutter price is whole pounds, so base x 1.5 is always whole pence
+    # and can never exercise the rounding rule. Use an odd-penny base instead:
+    # 14999p x 1.5 = 22498.5p, which rounds half up to 22499p
+    # (half-even or truncation would give 22498p).
+    p = load_prices()
+    p["gutters"]["bedrooms"]["4"]["package3"]["no_cons"] = 149.99
+    r = quote(
+        gutters(property={"kind": "standard", "bedrooms": 4}, service="package3", heavily_soiled=True),
+        prices=p,
+    )
+    assert amounts(r) == {"service": 14999, "heavily_soiled": 22499}
+    assert r["total"] == 37498
+
+    # Sheet-price check (26/27 list): 4 bed package3 without conservatory is £250,
+    # so the uplift is £375 and the total £625.
     r = quote(gutters(property={"kind": "standard", "bedrooms": 4}, service="package3", heavily_soiled=True))
-    assert amounts(r) == {"service": 23200, "heavily_soiled": 34800}
-    assert r["total"] == 58000
+    assert amounts(r) == {"service": 25000, "heavily_soiled": 37500}
+    assert r["total"] == 62500
 
 
 def test_one_bed_requires_manual_price():
@@ -156,7 +170,7 @@ def test_other_property_heavily_soiled_rejected():
 
 
 def test_manual_price_ignored_for_priced_property():
-    assert quote(gutters(manual_price=999))["total"] == 12000
+    assert quote(gutters(manual_price=999))["total"] == 13000
 
 
 def test_bad_service():
@@ -186,14 +200,14 @@ def test_extras_priced_unpriced_and_unselected():
         {"key": "extra_hedgehog_gutter_guards", "label": "Hedgehog Gutter Guards", "amount": 6000},
         {"key": "extra_power_source", "label": "Power Source (price TBC)", "amount": None},
     ]
-    assert r["subtotal"] == 18000
-    assert r["total"] == 18000
+    assert r["subtotal"] == 19000
+    assert r["total"] == 19000
 
 
 def test_extra_price_omitted_means_tbc():
     r = quote(gutters(extras=[{"name": "Garden Waste", "selected": True}]))
     assert r["lines"][-1]["amount"] is None
-    assert r["total"] == 12000
+    assert r["total"] == 13000
 
 
 def test_unknown_extra_rejected():
@@ -216,7 +230,7 @@ def test_extras_must_be_list():
 
 def test_gutter_override():
     r = quote(gutters(override={"total": 100, "reason": "Neighbour discount"}))
-    assert r["subtotal"] == 12000
+    assert r["subtotal"] == 13000
     assert r["total"] == 10000
     assert r["override"] == {"total": 10000, "reason": "Neighbour discount"}
 
@@ -240,6 +254,6 @@ def test_gutter_summary_text():
     assert "Conservatory/extension: Yes" in lines
     assert "Heavily soiled: Yes" in lines
     assert "Power Source (price TBC)" in lines
-    assert any(l.startswith("TOTAL (ONE-OFF)") and l.endswith("£437.50") for l in lines)
+    assert any(l.startswith("TOTAL (ONE-OFF)") and l.endswith("£462.50") for l in lines)
     assert "ALWAYS ask for photos of 5 bed properties before quoting." in text
     assert lines[-1] == "Prices include VAT."

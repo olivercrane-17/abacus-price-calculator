@@ -1,19 +1,19 @@
 {
   "_readme": "All prices for the Abacus price calculator. Amounts are in pounds and INCLUDE VAT. Edit numbers here, commit and push; Vercel redeploys automatically. See UPDATING-PRICES.md.",
-  "price_list_date": "February 2025",
+  "price_list_date": "2026/27",
 
   "windows": {
     "frequencies": ["4", "6", "8", "12"],
     "bedrooms": {
-      "1": { "regular": { "4": 15, "6": 15, "8": 15, "12": 15 }, "conservatory_addon": 9,  "one_off": 30, "one_off_with_conservatory": 48 },
+      "1": { "regular": { "4": 20, "6": 21, "8": 22, "12": 24 }, "conservatory_addon": 9,  "one_off": 40, "one_off_with_conservatory": 50 },
       "2": { "regular": { "4": 24, "6": 25, "8": 26, "12": 28 }, "conservatory_addon": 9,  "one_off": 56, "one_off_with_conservatory": 74 },
-      "3": { "regular": { "4": 27, "6": 28, "8": 29, "12": 31 }, "conservatory_addon": 9,  "one_off": 62, "one_off_with_conservatory": 80 },
-      "4": { "regular": { "4": 30, "6": 31, "8": 32, "12": 34 }, "conservatory_addon": 11, "one_off": 68, "one_off_with_conservatory": 90 },
-      "5": { "regular": { "4": 37, "6": 38, "8": 39, "12": 45 }, "conservatory_addon": 12, "one_off": 90, "one_off_with_conservatory": 114 }
+      "3": { "regular": { "4": 28, "6": 29, "8": 30, "12": 32 }, "conservatory_addon": 9,  "one_off": 62, "one_off_with_conservatory": 80 },
+      "4": { "regular": { "4": 32, "6": 34, "8": 36, "12": 38 }, "conservatory_addon": 11, "one_off": 68, "one_off_with_conservatory": 90 },
+      "5": { "regular": { "4": 39, "6": 41, "8": 43, "12": 49 }, "conservatory_addon": 12, "one_off": 90, "one_off_with_conservatory": 114 }
     },
     "internal_multiplier": 2,
-    "conservatory_roof": { "external_per_panel": 8, "external_minimum": 25, "internal_per_panel": 16 },
-    "velux": { "external_each": 1.5, "internal_each": 3 },
+    "conservatory_roof": { "external_per_panel": 9, "external_minimum": 25, "internal_per_panel": 16 },
+    "velux": { "external_each": 2, "internal_each": 4 },
     "lanterns": {
       "small":  { "external": 10, "internal": 20 },
       "medium": { "external": 15, "internal": 30 },
@@ -29,10 +29,10 @@
     },
     "bedrooms": {
       "1": null,
-      "2": { "clearance": { "no_cons": 100, "with_cons": 100 }, "outer": { "no_cons": 100, "with_cons": 100 }, "package3": { "no_cons": 180, "with_cons": 180 } },
-      "3": { "clearance": { "no_cons": 120, "with_cons": 135 }, "outer": { "no_cons": 120, "with_cons": 135 }, "package3": { "no_cons": 200, "with_cons": 220 } },
-      "4": { "clearance": { "no_cons": 137, "with_cons": 152 }, "outer": { "no_cons": 137, "with_cons": 152 }, "package3": { "no_cons": 232, "with_cons": 252 } },
-      "5": { "clearance": { "no_cons": 145, "with_cons": 175 }, "outer": { "no_cons": 145, "with_cons": 175 }, "package3": { "no_cons": 250, "with_cons": 285 } }
+      "2": { "clearance": { "no_cons": 110, "with_cons": 110 }, "outer": { "no_cons": 110, "with_cons": 110 }, "package3": { "no_cons": 180, "with_cons": 180 } },
+      "3": { "clearance": { "no_cons": 130, "with_cons": 145 }, "outer": { "no_cons": 130, "with_cons": 145 }, "package3": { "no_cons": 220, "with_cons": 240 } },
+      "4": { "clearance": { "no_cons": 149, "with_cons": 157 }, "outer": { "no_cons": 149, "with_cons": 157 }, "package3": { "no_cons": 250, "with_cons": 260 } },
+      "5": { "clearance": { "no_cons": 159, "with_cons": 185 }, "outer": { "no_cons": 159, "with_cons": 185 }, "package3": { "no_cons": 270, "with_cons": 295 } }
     },
     "heavily_soiled_multiplier": 2.5,
     "ask_about": ["Hedgehog Gutter Guards", "Power Source", "Garden Waste"]

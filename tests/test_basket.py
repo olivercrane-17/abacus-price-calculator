@@ -57,20 +57,20 @@ def test_empty_basket():
 
 def test_groups_by_frequency_and_one_off():
     r = basket({"items": [
-        windows(frequency="8"),                         # 2900 per visit, 8 weekly
-        windows(conservatory="standard"),               # 3600 per visit, 4 weekly
+        windows(frequency="8"),                         # 3000 per visit, 8 weekly
+        windows(conservatory="standard"),               # 3700 per visit, 4 weekly
         windows(property={"kind": "standard", "bedrooms": 2}),  # 2400 per visit, 4 weekly
         windows(frequency="one_off"),                   # 6200 one-off
-        gutters(),                                      # 20000 one-off
+        gutters(),                                      # 22000 one-off
     ]}, today=TODAY)
     assert r["count"] == 5
     assert r["groups"] == [
         {"basis": "per_visit", "frequency": "4", "label": "Every 4 weeks", "suffix": "per visit",
-         "total": 6000, "items": 2},
+         "total": 6100, "items": 2},
         {"basis": "per_visit", "frequency": "8", "label": "Every 8 weeks", "suffix": "per visit",
-         "total": 2900, "items": 1},
+         "total": 3000, "items": 1},
         {"basis": "one_off", "frequency": None, "label": "One-off total", "suffix": "one-off",
-         "total": 26200, "items": 2},
+         "total": 28200, "items": 2},
     ]
 
 
@@ -80,7 +80,7 @@ def test_items_keep_their_quotes_and_override_counts():
     assert item["ok"] is True
     assert item["index"] == 0
     assert item["quote"]["total"] == 15000
-    assert item["quote"]["subtotal"] == 20000
+    assert item["quote"]["subtotal"] == 22000
     assert r["groups"][0]["total"] == 15000
 
 
@@ -93,7 +93,7 @@ def test_invalid_item_is_reported_and_left_out_of_totals():
     assert good["ok"] is True
     assert r["groups"] == [
         {"basis": "one_off", "frequency": None, "label": "One-off total", "suffix": "one-off",
-         "total": 20000, "items": 1},
+         "total": 22000, "items": 1},
     ]
     assert "needs attention" in r["summary_text"]
 
@@ -108,8 +108,8 @@ def test_basket_summary_text():
     assert "ITEM 2 OF 2: 3 bed gutters · Package 3" in text
     assert "TOTAL PER VISIT" not in text.split("BASKET TOTALS")[1].split("\n", 1)[0]
     totals = text.split("BASKET TOTALS")[1]
-    assert "Every 4 weeks (per visit)" in totals and "£36.00" in totals
-    assert "One-off total" in totals and "£200.00" in totals
+    assert "Every 4 weeks (per visit)" in totals and "£37.00" in totals
+    assert "One-off total" in totals and "£220.00" in totals
     assert text.count("Prices include VAT.") == 1
     assert lines[-1] == "Prices include VAT."
 
@@ -134,7 +134,7 @@ def test_api_basket():
     assert r.status_code == 200
     body = r.json()
     assert body["count"] == 2
-    assert [g["total"] for g in body["groups"]] == [2700, 20000]
+    assert [g["total"] for g in body["groups"]] == [2800, 22000]
 
 
 def test_api_basket_bad_json():
